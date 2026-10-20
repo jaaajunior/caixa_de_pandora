@@ -1,0 +1,1514 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>A Caixa de Pandora: O Limiar Tecnológico (WebXR / Meta Quest 2)</title>
+  
+  <!-- Tailwind CSS para interface 2D HUD / Fallback Desktop -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Fontes Google -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Three.js e Addons WebXR & OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #030308;
+      font-family: 'Rajdhani', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .cinzel {
+      font-family: 'Cinzel', serif;
+    }
+    /* Estilização customizada para o botão nativo do Three.js VRButton */
+    #VRButton {
+      position: absolute !important;
+      bottom: 25px !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      background: linear-gradient(135deg, rgba(217, 119, 6, 0.85), rgba(147, 51, 234, 0.85)) !important;
+      color: #ffffff !important;
+      border: 1px solid rgba(253, 224, 71, 0.6) !important;
+      border-radius: 9999px !important;
+      padding: 12px 30px !important;
+      font-family: 'Rajdhani', sans-serif !important;
+      font-weight: 700 !important;
+      font-size: 15px !important;
+      letter-spacing: 0.15em !important;
+      text-transform: uppercase !important;
+      box-shadow: 0 0 25px rgba(234, 179, 8, 0.45) !important;
+      backdrop-filter: blur(8px) !important;
+      transition: all 0.3s ease !important;
+      z-index: 100 !important;
+      cursor: pointer !important;
+    }
+    #VRButton:hover {
+      box-shadow: 0 0 35px rgba(234, 179, 8, 0.8) !important;
+      transform: translateX(-50%) scale(1.05) !important;
+    }
+    /* Animação suave de scanner holográfico */
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(1000%); }
+    }
+    .scanner-line {
+      animation: scanline 4s linear infinite;
+    }
+  </style>
+</head>
+<body class="w-screen h-screen">
+
+  <!-- Container do Three.js WebGL/WebXR -->
+  <div id="canvas-container" class="absolute inset-0 w-full h-full z-0"></div>
+
+  <!-- HUD Overlay 2D (Para navegadores Desktop / Mobile / Oculus Browser 2D Window) -->
+  <div id="hud-overlay" class="pointer-events-none absolute inset-0 z-10 flex flex-col justify-between p-4 md:p-6 transition-opacity duration-700">
+    
+    <!-- Cabeçalho Superior -->
+    <header class="flex justify-between items-start">
+      <div class="pointer-events-auto bg-black/60 backdrop-blur-md p-4 rounded-xl border border-amber-500/30 max-w-md shadow-2xl">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
+          <span class="text-xs uppercase tracking-widest text-amber-400 font-bold">PROTOCOLO PANDORA // ARTEFATO #001</span>
+        </div>
+        <h1 class="cinzel text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-purple-400">
+          A CAIXA DE PANDORA
+        </h1>
+        <p class="text-xs md:text-sm text-gray-300 mt-1 leading-relaxed">
+          Templo Ciber-Mítico. A confluência entre o mito grego da curiosidade humana e o despertar das tecnologias emergentes (IA, Nanotecnologia e Biologia Sintética).
+        </p>
+      </div>
+
+      <!-- Indicador de Status do Selo -->
+      <div class="pointer-events-auto bg-black/60 backdrop-blur-md px-4 py-3 rounded-xl border border-purple-500/30 text-right shadow-2xl">
+        <div class="text-[10px] text-purple-300 uppercase tracking-wider font-semibold">Integridade do Selo</div>
+        <div id="seal-status-text" class="text-sm md:text-base font-bold text-emerald-400 tracking-wider">
+          SELADO // 100%
+        </div>
+        <div class="text-[10px] text-gray-400 mt-0.5" id="mode-indicator">
+          Modo: Desktop / Mouse
+        </div>
+      </div>
+    </header>
+
+    <!-- Rodapé: Controles Rápidos e Instruções -->
+    <footer class="flex flex-col md:flex-row justify-between items-end gap-3 pb-16 md:pb-2">
+      <!-- Dica de Navegação -->
+      <div class="pointer-events-auto bg-black/60 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 text-xs text-gray-300 max-w-sm">
+        <p><span class="text-amber-400 font-bold">Controles:</span> Em desktop, arraste o mouse para orbitar a câmera e clique na Caixa ou nos painéis para interagir. No <strong>Meta Quest 2</strong>, aperte <strong>"ENTER VR"</strong> abaixo e aponte o gatilho dos controles.</p>
+      </div>
+
+      <!-- Barra de Ação Rápida 2D -->
+      <div class="pointer-events-auto flex items-center gap-3">
+        <button id="btn-audio-toggle" class="bg-gray-900/80 hover:bg-gray-800 text-amber-300 border border-amber-500/40 px-3.5 py-2 rounded-xl text-xs font-semibold backdrop-blur transition-all flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+          <span id="audio-label">Áudio: Ativo</span>
+        </button>
+
+        <button id="btn-main-trigger" class="bg-gradient-to-r from-amber-600 via-purple-600 to-indigo-600 hover:from-amber-500 hover:to-indigo-500 text-white font-bold px-6 py-2.5 rounded-xl text-sm tracking-wider uppercase shadow-lg shadow-purple-900/50 border border-amber-300/40 transition-all transform hover:scale-105 active:scale-95">
+          Desbloquear Selo
+        </button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Modal Informativo 2D para Tecnologias (Fallback) -->
+  <div id="info-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+    <div class="bg-gradient-to-b from-gray-900 via-gray-950 to-black border border-amber-500/50 rounded-2xl max-w-lg w-full p-6 text-white shadow-2xl relative">
+      <h3 id="modal-title" class="cinzel text-xl font-bold text-amber-400 mb-2">Tecnologia</h3>
+      <p id="modal-desc" class="text-sm text-gray-300 leading-relaxed mb-6"></p>
+      <div class="flex justify-end">
+        <button id="modal-close-btn" class="bg-amber-600 hover:bg-amber-500 text-black font-bold px-5 py-2 rounded-lg text-xs uppercase tracking-wider">
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* =====================================================================
+       1. MOTOR DE ÁUDIO SINTETIZADO (Web Audio API - Sem Arquivos Externos)
+       ===================================================================== */
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.masterGain = null;
+        this.ambientGain = null;
+        this.humOsc = null;
+        this.enabled = true;
+      }
+
+      init() {
+        if (this.ctx) return;
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioContext();
+        
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+        this.masterGain.connect(this.ctx.destination);
+
+        // Zumbido místico ambiente de fundo
+        this.startAmbientHum();
+      }
+
+      startAmbientHum() {
+        if (!this.ctx) return;
+        this.ambientGain = this.ctx.createGain();
+        this.ambientGain.gain.setValueAtTime(0.06, this.ctx.currentTime);
+        this.ambientGain.connect(this.masterGain);
+
+        // Frequência baixa e ressonante (55Hz / Nota A1)
+        this.humOsc = this.ctx.createOscillator();
+        this.humOsc.type = 'sawtooth';
+        this.humOsc.frequency.setValueAtTime(55, this.ctx.currentTime);
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(140, this.ctx.currentTime);
+
+        this.humOsc.connect(filter);
+        filter.connect(this.ambientGain);
+        this.humOsc.start();
+      }
+
+      playHoverSound() {
+        if (!this.enabled || !this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(580, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.12);
+
+        gain.gain.setValueAtTime(0.04, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.12);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.12);
+      }
+
+      playClickSound() {
+        if (!this.enabled || !this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(320, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(120, this.ctx.currentTime + 0.25);
+
+        gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.25);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.25);
+      }
+
+      playOpenBoxSequence() {
+        if (!this.enabled || !this.ctx) return;
+        const t = this.ctx.currentTime;
+
+        // 1. Desbloqueio e carga de energia (pitch subindo)
+        const riser = this.ctx.createOscillator();
+        const riserGain = this.ctx.createGain();
+        riser.type = 'sawtooth';
+        riser.frequency.setValueAtTime(110, t);
+        riser.frequency.exponentialRampToValueAtTime(880, t + 1.8);
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(300, t);
+        filter.frequency.exponentialRampToValueAtTime(2400, t + 1.8);
+        filter.Q.value = 4.0;
+
+        riserGain.gain.setValueAtTime(0.01, t);
+        riserGain.gain.linearRampToValueAtTime(0.25, t + 1.6);
+        riserGain.gain.exponentialRampToValueAtTime(0.001, t + 2.0);
+
+        riser.connect(filter);
+        filter.connect(riserGain);
+        riserGain.connect(this.masterGain);
+        riser.start(t);
+        riser.stop(t + 2.0);
+
+        // 2. Ruído de impacto e liberação de energia escura (males)
+        setTimeout(() => {
+          this.playBurstImpact();
+        }, 1600);
+
+        // 3. Tom harmônico etéreo e angelical para a Esperança (Elpis)
+        setTimeout(() => {
+          this.playHopeArpeggio();
+        }, 2800);
+      }
+
+      playBurstImpact() {
+        if (!this.ctx) return;
+        const bufferSize = this.ctx.sampleRate * 1.5;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(800, this.ctx.currentTime);
+        filter.frequency.exponentialRampToValueAtTime(80, this.ctx.currentTime + 1.2);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 1.4);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain);
+        noise.start();
+      }
+
+      playHopeArpeggio() {
+        if (!this.ctx) return;
+        const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51]; // Acorde C Maior reluzente
+        notes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.16);
+
+          gain.gain.setValueAtTime(0, this.ctx.currentTime + idx * 0.16);
+          gain.gain.linearRampToValueAtTime(0.09, this.ctx.currentTime + idx * 0.16 + 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + idx * 0.16 + 2.8);
+
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+          osc.start(this.ctx.currentTime + idx * 0.16);
+          osc.stop(this.ctx.currentTime + idx * 0.16 + 2.8);
+        });
+      }
+
+      toggle() {
+        this.enabled = !this.enabled;
+        if (this.masterGain) {
+          this.masterGain.gain.setValueAtTime(this.enabled ? 0.5 : 0.0, this.ctx.currentTime);
+        }
+        return this.enabled;
+      }
+    }
+
+    const sound = new SoundEngine();
+    window.addEventListener('click', () => sound.init(), { once: true });
+    window.addEventListener('touchstart', () => sound.init(), { once: true });
+
+    /* =====================================================================
+       2. DADOS DO CONTEXTO MITOLÓGICO & TECNOLÓGICO
+       ===================================================================== */
+    const TECH_DATA = [
+      {
+        id: 'ai',
+        title: 'Inteligência Artificial & AGIs',
+        icon: '◈',
+        color: '#a855f7',
+        category: 'O Novo Prometeu',
+        desc: 'A centelha do pensamento artificial. O risco de desalinhamento de valores e perda de controle cognitivo, contra a virtude de curar doenças e solucionar a física fundamental.'
+      },
+      {
+        id: 'bio',
+        title: 'Biotecnologia & CRISPR',
+        icon: '⬡',
+        color: '#ec4899',
+        category: 'Gênese Sintética',
+        desc: 'A reescrita do código da vida. A ameaça da bioguerra e eugenia sintética versus a erradicação de patologias hereditárias e imortalidade celular.'
+      },
+      {
+        id: 'nano',
+        title: 'Nanotecnologia & Matéria',
+        icon: '◇',
+        color: '#38bdf8',
+        category: 'Manipulação Atômica',
+        desc: 'O domínio sobre átomos individuais. O temido cenário "Grey Goo" (consumo de biomassa) versus a transmutação sustentável de recursos e energia limpa infinita.'
+      },
+      {
+        id: 'cyber',
+        title: 'Ciberespaço & Consciência',
+        icon: '❖',
+        color: '#22c55e',
+        category: 'Mente Conectada',
+        desc: 'Interfaces cérebro-computador e perda de privacidade neural versus a comunhão global de conhecimento e expansão sináptica.'
+      },
+      {
+        id: 'hope',
+        title: 'Elpis: A Esperança Ativa',
+        icon: '★',
+        color: '#fbbf24',
+        category: 'A Luz no Fundo da Caixa',
+        desc: 'No mito, a Esperança permaneceu retida sob a borda. Na era moderna, ela representa a sabedoria humana, a governança ética e o propósito compartilhado.'
+      }
+    ];
+
+    // Dados dos fragmentos de dados que emergem da Caixa ao ser aberta
+    const DATA_FRAGMENTS = [
+      { code: "VETOR-01 // IA-AGI", title: "Superinteligência Não-Alinhada", risk: "CRÍTICO", text: "Modelos autoreflexivos com capacidades cognitivas autônomas. Risco de desalinhamento existencial.", color: "#c084fc", icon: "🧠" },
+      { code: "VETOR-02 // BIO-CRISPR", title: "Engenharia Genômica Germinativa", risk: "SEVERO", text: "Edição hereditária humana e síntese de patógenos desenhados em computador sem antídotos.", color: "#f472b6", icon: "🧬" },
+      { code: "VETOR-03 // NANO-TECH", title: "Montadores Moleculares Autônomos", risk: "ALTO", text: "Proliferação molecular não contida ('Grey Goo') e decomposição de matéria biológica.", color: "#38bdf8", icon: "⬡" },
+      { code: "VETOR-04 // CYBER-WAR", title: "Guerra Cibernética Autônoma", risk: "CRÍTICO", text: "Ataques sem intervenção humana paralisando redes de suporte à vida e matrizes elétricas.", color: "#ef4444", icon: "⚡" },
+      { code: "VETOR-05 // QUANTUM-ENC", title: "Quebra da Criptografia Quântica", risk: "IMINENTE", text: "Colapso imediato da segurança de dados global, segredos de estado e privacidade financeira.", color: "#06b6d4", icon: "🔐" },
+      { code: "VETOR-06 // DEEP-SYNTH", title: "Realidade Sintética Indistinguível", risk: "SEVERO", text: "Erosão total da confiança epistemológica através de simulações hiper-realistas.", color: "#fb923c", icon: "👁️" },
+      { code: "VETOR-07 // NEURO-LINK", title: "Controle e Monitoramento Cognitivo", risk: "ALTO", text: "Extração direta de pensamentos, telemetria neural comercial e manipulação ideológica subliminar.", color: "#a855f7", icon: "📡" },
+      { code: "VETOR-08 // AUTO-DRONES", title: "Enxames Bélicos Autônomos", risk: "EXTREMO", text: "Microdrones letais coordenados por redes neurais de abate sem veto ético humano.", color: "#e11d48", icon: "🎯" },
+      { code: "VETOR-09 // BIO-CHIMERA", title: "Quimeras Biomecânicas", risk: "SEVERO", text: "Fusão de tecidos orgânicos com nanossensores e cibernética sintética celular.", color: "#4ade80", icon: "☣️" },
+      { code: "VETOR-10 // INFO-OVERLOAD", title: "Infodemia e Ruptura Social", risk: "ALTO", text: "Saturação de estímulos cognitivos levando à fragmentação da atenção coletiva.", color: "#eab308", icon: "🌐" },
+      { code: "VETOR-11 // ELPIS-ALPHA", title: "Governança Ética Global", risk: "ESPERANÇA", text: "Pactos globais de contenção, transparência e alinhamento do progresso à dignidade humana.", color: "#fde047", icon: "✨" },
+      { code: "VETOR-12 // ELPIS-OMEGA", title: "Medicina Regenerativa & Longevidade", risk: "ESPERANÇA", text: "Erradicação definitiva de doenças genéticas, regeneração celular e sabedoria compartilhada.", color: "#38bdf8", icon: "🕊️" }
+    ];
+
+    /* =====================================================================
+       3. CENA THREE.JS, RENDERIZADOR WEBXR E CÂMERA
+       ===================================================================== */
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x04040a);
+    scene.fog = new THREE.FogExp2(0x070714, 0.04);
+
+    const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 150);
+    // Posição inicial da câmera (ideal para visão em pé no templo)
+    camera.position.set(0, 1.6, 2.7);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.25;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.xr.enabled = true; // Habilita WebXR para Meta Quest 2
+    container.appendChild(renderer.domElement);
+
+    // Implementação direta e autossuficiente do VRButton (compatível com Meta Quest 2 e navegadores desktop)
+    const VRButton = {
+      createButton: function(rendererInstance) {
+        const button = document.createElement('button');
+        button.id = 'VRButton';
+
+        function showEnterVR() {
+          let currentSession = null;
+
+          async function onSessionStarted(session) {
+            session.addEventListener('end', onSessionEnded);
+            await rendererInstance.xr.setSession(session);
+            button.textContent = 'SAIR DO VR';
+            currentSession = session;
+            const modeInd = document.getElementById('mode-indicator');
+            if (modeInd) modeInd.innerText = 'Modo: Meta Quest 2 (Sessão VR Ativa)';
+          }
+
+          function onSessionEnded() {
+            currentSession.removeEventListener('end', onSessionEnded);
+            button.textContent = 'ENTRAR NO VR';
+            currentSession = null;
+            const modeInd = document.getElementById('mode-indicator');
+            if (modeInd) modeInd.innerText = 'Modo: Desktop / Mouse';
+          }
+
+          button.style.display = '';
+          button.style.cursor = 'pointer';
+          button.textContent = 'ENTRAR NO VR';
+
+          button.onmouseenter = function() {
+            button.style.opacity = '1.0';
+          };
+          button.onmouseleave = function() {
+            button.style.opacity = '0.9';
+          };
+
+          button.onclick = function() {
+            sound.init(); // Ativa o contexto de áudio com a interação do usuário
+            if (currentSession === null) {
+              const sessionInit = { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking'] };
+              navigator.xr.requestSession('immersive-vr', sessionInit).then(onSessionStarted).catch((err) => {
+                console.warn('Falha ao iniciar sessão WebXR:', err);
+              });
+            } else {
+              currentSession.end();
+            }
+          };
+        }
+
+        function disableButton() {
+          button.style.display = '';
+          button.style.cursor = 'auto';
+          button.style.opacity = '0.6';
+          button.onmouseenter = null;
+          button.onmouseleave = null;
+          button.onclick = null;
+        }
+
+        function showWebXRNotFound() {
+          disableButton();
+          button.textContent = 'VR NÃO SUPORTADO';
+        }
+
+        if ('xr' in navigator) {
+          button.id = 'VRButton';
+          button.textContent = 'VERIFICANDO VR...';
+
+          navigator.xr.isSessionSupported('immersive-vr').then(function(supported) {
+            supported ? showEnterVR() : showWebXRNotFound();
+          }).catch(showWebXRNotFound);
+
+          return button;
+        } else {
+          button.id = 'VRButton';
+          button.textContent = 'WEBXR NÃO DISPONÍVEL';
+          disableButton();
+          return button;
+        }
+      }
+    };
+
+    // Botão VR adicionado ao DOM
+    const vrBtn = VRButton.createButton(renderer);
+    document.body.appendChild(vrBtn);
+
+    // OrbitControls para Desktop e Mobile (quando fora do VR)
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.target.set(0, 1.1, 0);
+    controls.maxPolarAngle = Math.PI / 2 + 0.05;
+    controls.minDistance = 1.0;
+    controls.maxDistance = 12.0;
+
+    // Grupo para câmera/jogador no WebXR
+    const playerDolly = new THREE.Group();
+    playerDolly.position.set(0, 0, 0);
+    scene.add(playerDolly);
+    playerDolly.add(camera);
+
+    /* =====================================================================
+       4. ILUMINAÇÃO DRAMÁTICA DO TEMPLO
+       ===================================================================== */
+    const ambientLight = new THREE.AmbientLight(0x1a1233, 1.2);
+    scene.add(ambientLight);
+
+    // Luz focal dourada acima do pedestal
+    const altarSpot = new THREE.SpotLight(0xffdf88, 3.5);
+    altarSpot.position.set(0, 6, 0);
+    altarSpot.target.position.set(0, 1.1, 0);
+    altarSpot.angle = Math.PI / 4.5;
+    altarSpot.penumbra = 0.6;
+    altarSpot.castShadow = true;
+    altarSpot.shadow.mapSize.width = 1024;
+    altarSpot.shadow.mapSize.height = 1024;
+    scene.add(altarSpot);
+    scene.add(altarSpot.target);
+
+    // Luzes de destaque cyberpunk laterais
+    const cyanLight = new THREE.PointLight(0x00f0ff, 1.8, 14);
+    cyanLight.position.set(-3.5, 2.5, -2);
+    scene.add(cyanLight);
+
+    const magentaLight = new THREE.PointLight(0xd946ef, 2.2, 14);
+    magentaLight.position.set(3.5, 2.5, -2);
+    scene.add(magentaLight);
+
+    // Luz interna da caixa (acenderá na abertura)
+    const boxInnerLight = new THREE.PointLight(0xffe600, 0, 5);
+    boxInnerLight.position.set(0, 1.2, 0);
+    scene.add(boxInnerLight);
+
+    /* =====================================================================
+       5. CONSTRUÇÃO DO CENÁRIO (Templo Místico Cyberpunk)
+       ===================================================================== */
+    // Piso de mármore obsidiana com anéis rúnicos
+    const floorGeo = new THREE.PlaneGeometry(35, 35, 32, 32);
+    const floorMat = new THREE.MeshStandardMaterial({
+      color: 0x0a0c14,
+      roughness: 0.25,
+      metalness: 0.85
+    });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    // Círculos rúnicos brilhantes no piso
+    function createRuneRing(radius, color, count) {
+      const ringGroup = new THREE.Group();
+      const circleGeo = new THREE.RingGeometry(radius - 0.03, radius + 0.03, 64);
+      const circleMat = new THREE.MeshBasicMaterial({ color: color, side: THREE.DoubleSide });
+      const circle = new THREE.Mesh(circleGeo, circleMat);
+      circle.rotation.x = -Math.PI / 2;
+      circle.position.y = 0.005;
+      ringGroup.add(circle);
+
+      // Elementos rúnicos em volta
+      for (let i = 0; i < count; i++) {
+        const ang = (i / count) * Math.PI * 2;
+        const markGeo = new THREE.PlaneGeometry(0.12, 0.04);
+        const markMat = new THREE.MeshBasicMaterial({ color: color, side: THREE.DoubleSide });
+        const mark = new THREE.Mesh(markGeo, markMat);
+        mark.position.set(Math.cos(ang) * radius, 0.008, Math.sin(ang) * radius);
+        mark.rotation.x = -Math.PI / 2;
+        mark.rotation.z = -ang;
+        ringGroup.add(mark);
+      }
+      return ringGroup;
+    }
+
+    const runes1 = createRuneRing(2.0, 0x9333ea, 24);
+    const runes2 = createRuneRing(3.8, 0xf59e0b, 36);
+    scene.add(runes1);
+    scene.add(runes2);
+
+    // Pilares do Templo com ranhuras de neon
+    const pillarMat = new THREE.MeshStandardMaterial({
+      color: 0x111322,
+      roughness: 0.4,
+      metalness: 0.7
+    });
+    const neonStripeMat = new THREE.MeshBasicMaterial({ color: 0x8b5cf6 });
+
+    const pillarCoords = [
+      [-4.5, -4.5], [4.5, -4.5], [-4.5, 4.5], [4.5, 4.5],
+      [-5.5, 0], [5.5, 0]
+    ];
+
+    pillarCoords.forEach(([px, pz]) => {
+      const pillarGroup = new THREE.Group();
+      pillarGroup.position.set(px, 0, pz);
+
+      // Base
+      const baseGeo = new THREE.CylinderGeometry(0.7, 0.85, 0.6, 8);
+      const base = new THREE.Mesh(baseGeo, pillarMat);
+      base.position.y = 0.3;
+      pillarGroup.add(base);
+
+      // Corpo octogonal
+      const bodyGeo = new THREE.CylinderGeometry(0.48, 0.52, 7.5, 8);
+      const body = new THREE.Mesh(bodyGeo, pillarMat);
+      body.position.y = 4.0;
+      body.castShadow = true;
+      body.receiveShadow = true;
+      pillarGroup.add(body);
+
+      // Filetes de Neon vertical
+      for (let i = 0; i < 4; i++) {
+        const rad = (i * Math.PI) / 2;
+        const stripeGeo = new THREE.BoxGeometry(0.04, 7.0, 0.04);
+        const stripe = new THREE.Mesh(stripeGeo, neonStripeMat);
+        stripe.position.set(Math.cos(rad) * 0.53, 4.0, Math.sin(rad) * 0.53);
+        pillarGroup.add(stripe);
+      }
+      scene.add(pillarGroup);
+    });
+
+    // Pedestal Central Flutuante
+    const pedestalGroup = new THREE.Group();
+    pedestalGroup.position.set(0, 0, 0);
+
+    // Base inferior no chão
+    const pedBaseGeo = new THREE.CylinderGeometry(0.9, 1.1, 0.35, 12);
+    const pedBase = new THREE.Mesh(pedBaseGeo, pillarMat);
+    pedBase.position.y = 0.175;
+    pedBase.receiveShadow = true;
+    pedestalGroup.add(pedBase);
+
+    // Altar flutuante principal com campo de levitação magnética
+    const pedAltarGeo = new THREE.CylinderGeometry(0.75, 0.6, 0.45, 12);
+    const pedAltarMat = new THREE.MeshStandardMaterial({
+      color: 0x16192b,
+      metalness: 0.9,
+      roughness: 0.2
+    });
+    const pedAltar = new THREE.Mesh(pedAltarGeo, pedAltarMat);
+    pedAltar.position.y = 0.85;
+    pedAltar.castShadow = true;
+    pedAltar.receiveShadow = true;
+    pedestalGroup.add(pedAltar);
+
+    // Anel de levitação com emissão de luz
+    const floatRingGeo = new THREE.TorusGeometry(0.78, 0.025, 16, 64);
+    const floatRingMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+    const floatRing = new THREE.Mesh(floatRingGeo, floatRingMat);
+    floatRing.rotation.x = Math.PI / 2;
+    floatRing.position.y = 0.85;
+    pedestalGroup.add(floatRing);
+
+    scene.add(pedestalGroup);
+
+    /* =====================================================================
+       6. A CAIXA DE PANDORA 3D (Corpo e Tampa Articulada)
+       ===================================================================== */
+    const boxRoot = new THREE.Group();
+    boxRoot.position.set(0, 1.08, 0); // Pousada sobre o pedestal
+    scene.add(boxRoot);
+
+    // Materiais da Caixa: Bronze Ancestral & Circuitos Dourados
+    const chestGoldMat = new THREE.MeshStandardMaterial({
+      color: 0xdf9d35,
+      metalness: 0.88,
+      roughness: 0.32,
+      bumpScale: 0.05
+    });
+
+    const chestBodyMat = new THREE.MeshStandardMaterial({
+      color: 0x22132a,
+      metalness: 0.7,
+      roughness: 0.4
+    });
+
+    const neonCircuitMat = new THREE.MeshBasicMaterial({
+      color: 0xf59e0b
+    });
+
+    // Grupo do Corpo (Base do Baú)
+    const chestBody = new THREE.Group();
+    const mainBoxGeo = new THREE.BoxGeometry(0.7, 0.38, 0.52);
+    const mainBox = new THREE.Mesh(mainBoxGeo, chestBodyMat);
+    mainBox.castShadow = true;
+    mainBox.receiveShadow = true;
+    chestBody.add(mainBox);
+
+    // Cantoneiras douradas ornamentadas
+    const cornerOffsets = [
+      [-0.35, -0.19, -0.26], [0.35, -0.19, -0.26],
+      [-0.35, -0.19, 0.26], [0.35, -0.19, 0.26]
+    ];
+    cornerOffsets.forEach(([cx, cy, cz]) => {
+      const cGeo = new THREE.BoxGeometry(0.06, 0.38, 0.06);
+      const cMesh = new THREE.Mesh(cGeo, chestGoldMat);
+      cMesh.position.set(cx, 0, cz);
+      chestBody.add(cMesh);
+    });
+
+    // Painéis de runas / circuitos na frente e verso
+    const circGeo = new THREE.PlaneGeometry(0.5, 0.22);
+    const circFront = new THREE.Mesh(circGeo, neonCircuitMat);
+    circFront.position.set(0, 0, 0.262);
+    chestBody.add(circFront);
+
+    // Selo frontal de contenção (cristal octogonal central)
+    const sealGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.03, 8);
+    const sealMat = new THREE.MeshStandardMaterial({
+      color: 0x10b981,
+      emissive: 0x10b981,
+      emissiveIntensity: 0.8,
+      metalness: 0.5,
+      roughness: 0.2
+    });
+    const sealMesh = new THREE.Mesh(sealGeo, sealMat);
+    sealMesh.rotation.x = Math.PI / 2;
+    sealMesh.position.set(0, 0, 0.27);
+    chestBody.add(sealMesh);
+
+    boxRoot.add(chestBody);
+
+    // Dobradiça e Tampa do Baú (Pivot articulado na borda traseira)
+    // Dimensões do topo: z = 0.52, então borda traseira = -0.26; altura = +0.19
+    const lidPivot = new THREE.Group();
+    lidPivot.position.set(0, 0.19, -0.26);
+    boxRoot.add(lidPivot);
+
+    const lidGroup = new THREE.Group();
+    lidGroup.position.set(0, 0, 0.26); // Desloca para o centro geométrico
+
+    // Topo curvado abobadado (Cilindro seccionado)
+    const lidGeo = new THREE.CylinderGeometry(0.27, 0.27, 0.71, 32, 1, false, 0, Math.PI);
+    const lidMesh = new THREE.Mesh(lidGeo, chestGoldMat);
+    lidMesh.rotation.z = Math.PI / 2;
+    lidMesh.position.y = 0;
+    lidMesh.castShadow = true;
+    lidGroup.add(lidMesh);
+
+    // Detalhe de runa superior da tampa
+    const lidRingGeo = new THREE.TorusGeometry(0.12, 0.015, 8, 24);
+    const lidRing = new THREE.Mesh(lidRingGeo, neonCircuitMat);
+    lidRing.rotation.x = Math.PI / 2;
+    lidRing.position.y = 0.275;
+    lidGroup.add(lidRing);
+
+    lidPivot.add(lidGroup);
+
+    // Tornar a caixa interativa para raycast
+    const interactiveObjects = [];
+    mainBox.userData = { isChest: true };
+    lidMesh.userData = { isChest: true };
+    sealMesh.userData = { isChest: true };
+    interactiveObjects.push(mainBox, lidMesh, sealMesh);
+
+    /* =====================================================================
+       7. SISTEMA DE PARTÍCULAS: MALES DO MUNDO & CENTELHA DE ESPERANÇA
+       ===================================================================== */
+    // 7.1 Partículas dos Males (Nebulosa escura de Caos: Roxo, Magenta e Fumaça)
+    const EVIL_COUNT = 700;
+    const evilGeo = new THREE.BufferGeometry();
+    const evilPos = new Float32Array(EVIL_COUNT * 3);
+    const evilVelo = [];
+
+    for (let i = 0; i < EVIL_COUNT; i++) {
+      evilPos[i * 3 + 0] = 0;
+      evilPos[i * 3 + 1] = 1.25;
+      evilPos[i * 3 + 2] = 0;
+
+      // Velocidade esférica turbilhonar
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(Math.random() * 2 - 1);
+      const speed = 0.8 + Math.random() * 2.2;
+
+      evilVelo.push({
+        x: Math.sin(phi) * Math.cos(theta) * speed,
+        y: Math.cos(phi) * speed * 1.5 + 0.5,
+        z: Math.sin(phi) * Math.sin(theta) * speed,
+        life: 0,
+        maxLife: 2.0 + Math.random() * 2.5
+      });
+    }
+
+    evilGeo.setAttribute('position', new THREE.BufferAttribute(evilPos, 3));
+    const evilMat = new THREE.PointsMaterial({
+      color: 0x9333ea,
+      size: 0.065,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    const evilParticles = new THREE.Points(evilGeo, evilMat);
+    scene.add(evilParticles);
+
+    // 7.2 Centelha Dourada de Elpis (A Esperança)
+    const hopeOrbGeo = new THREE.SphereGeometry(0.12, 32, 32);
+    const hopeOrbMat = new THREE.MeshBasicMaterial({
+      color: 0xfffbeb,
+      transparent: true,
+      opacity: 0
+    });
+    const hopeOrb = new THREE.Mesh(hopeOrbGeo, hopeOrbMat);
+    hopeOrb.position.set(0, 1.25, 0);
+    scene.add(hopeOrb);
+
+    // Halo dourado da Esperança
+    const HOPE_COUNT = 300;
+    const hopeGeo = new THREE.BufferGeometry();
+    const hopePos = new Float32Array(HOPE_COUNT * 3);
+    const hopeVelo = [];
+
+    for (let i = 0; i < HOPE_COUNT; i++) {
+      hopePos[i * 3 + 0] = 0;
+      hopePos[i * 3 + 1] = 1.25;
+      hopePos[i * 3 + 2] = 0;
+      hopeVelo.push({
+        ang: Math.random() * Math.PI * 2,
+        rad: 0.15 + Math.random() * 0.45,
+        speed: 1.5 + Math.random() * 2,
+        yOffset: (Math.random() - 0.5) * 0.4
+      });
+    }
+
+    hopeGeo.setAttribute('position', new THREE.BufferAttribute(hopePos, 3));
+    const hopeMat = new THREE.PointsMaterial({
+      color: 0xfde047,
+      size: 0.045,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    const hopeParticles = new THREE.Points(hopeGeo, hopeMat);
+    scene.add(hopeParticles);
+
+    /* =====================================================================
+       7.3 FRAGMENTOS HOLOGRÁFICOS DE INFORMAÇÕES EXPANDIDAS (ORBITAIS 3D)
+       ===================================================================== */
+    const infoFragmentsGroup = new THREE.Group();
+    scene.add(infoFragmentsGroup);
+
+    const hologramPanels = [];
+
+    // Função utilitária para desenhar cartões de informação de alta definição
+    function createInfoHoloTexture(info) {
+      const cvs = document.createElement('canvas');
+      cvs.width = 512;
+      cvs.height = 320;
+      const ctx = cvs.getContext('2d');
+
+      // Fundo holográfico translúcido escuro
+      ctx.fillStyle = 'rgba(6, 9, 24, 0.9)';
+      ctx.fillRect(0, 0, 512, 320);
+
+      // Moldura cibernética com gradiente
+      ctx.strokeStyle = info.color;
+      ctx.lineWidth = 6;
+      ctx.strokeRect(10, 10, 492, 300);
+
+      // Linha de varredura no topo
+      ctx.fillStyle = info.color;
+      ctx.fillRect(10, 10, 492, 12);
+
+      // Código e Ícone do Vetor
+      ctx.fillStyle = info.color;
+      ctx.font = 'bold 22px Rajdhani, sans-serif';
+      ctx.fillText(`${info.icon} ${info.code}`, 25, 48);
+
+      // Tag de Risco
+      const riskColor = info.risk === 'ESPERANÇA' ? '#22c55e' : (info.risk === 'CRÍTICO' || info.risk === 'EXTREMO' ? '#ef4444' : '#f59e0b');
+      ctx.fillStyle = riskColor;
+      ctx.font = 'bold 20px Rajdhani, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(`RISCO: ${info.risk}`, 485, 48);
+      ctx.textAlign = 'left';
+
+      // Linha separadora
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(25, 65);
+      ctx.lineTo(487, 65);
+      ctx.stroke();
+
+      // Título do Vetor
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 30px Rajdhani, sans-serif';
+      wrapText(ctx, info.title, 25, 105, 460, 34);
+
+      // Texto Explicativo Detalhado
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = '22px Rajdhani, sans-serif';
+      wrapText(ctx, info.text, 25, 185, 460, 28);
+
+      // Rodapé com prompt de interação
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.7)';
+      ctx.font = '16px Rajdhani, sans-serif';
+      ctx.fillText('// TOQUE OU MIRE COM O CONTROLE VR PARA FIXAR', 25, 295);
+
+      const texture = new THREE.CanvasTexture(cvs);
+      texture.minFilter = THREE.LinearFilter;
+      return texture;
+    }
+
+    // Instanciação dos cartões holográficos que subirão da caixa
+    DATA_FRAGMENTS.forEach((data, index) => {
+      const panelTexture = createInfoHoloTexture(data);
+      const panelGeo = new THREE.PlaneGeometry(0.75, 0.47);
+      const panelMat = new THREE.MeshBasicMaterial({
+        map: panelTexture,
+        transparent: true,
+        opacity: 0,
+        side: THREE.DoubleSide
+      });
+      const panelMesh = new THREE.Mesh(panelGeo, panelMat);
+
+      // Posição recolhida dentro da caixa
+      panelMesh.position.set(0, 1.15, 0);
+      panelMesh.scale.set(0.01, 0.01, 0.01);
+      panelMesh.userData = {
+        isInfoCard: true,
+        data: data,
+        index: index,
+        baseAngle: (index / DATA_FRAGMENTS.length) * Math.PI * 2,
+        baseRadius: 1.6 + (index % 3) * 0.45,
+        targetY: 1.4 + ((index % 4) - 1.5) * 0.42,
+        currentY: 1.15,
+        speed: 0.15 + (index % 3) * 0.08
+      };
+
+      // Borda neon decorativa
+      const borderGeo = new THREE.EdgesGeometry(panelGeo);
+      const borderMat = new THREE.LineBasicMaterial({ color: new THREE.Color(data.color) });
+      const borderLine = new THREE.LineSegments(borderGeo, borderMat);
+      panelMesh.add(borderLine);
+
+      infoFragmentsGroup.add(panelMesh);
+      hologramPanels.push(panelMesh);
+      interactiveObjects.push(panelMesh);
+    });
+
+    // Coluna vertical de fluxo de dados que sobe da caixa
+    const beamGeo = new THREE.CylinderGeometry(0.28, 0.08, 3.8, 16, 1, true);
+    const beamMat = new THREE.MeshBasicMaterial({
+      color: 0x9333ea,
+      transparent: true,
+      opacity: 0,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending
+    });
+    const dataStreamBeam = new THREE.Mesh(beamGeo, beamMat);
+    dataStreamBeam.position.set(0, 2.9, 0);
+    scene.add(dataStreamBeam);
+
+    /* =====================================================================
+       8. PAINEL HOLOGRÁFICO 3D FLUTUANTE (Visível em VR e Desktop)
+       ===================================================================== */
+    const holoCanvas = document.createElement('canvas');
+    holoCanvas.width = 1024;
+    holoCanvas.height = 768;
+    const hctx = holoCanvas.getContext('2d');
+
+    const holoTexture = new THREE.CanvasTexture(holoCanvas);
+    holoTexture.minFilter = THREE.LinearFilter;
+    const holoPlaneGeo = new THREE.PlaneGeometry(1.6, 1.2);
+    const holoPlaneMat = new THREE.MeshBasicMaterial({
+      map: holoTexture,
+      transparent: true,
+      opacity: 0.92,
+      side: THREE.DoubleSide
+    });
+
+    const holoBoard = new THREE.Mesh(holoPlaneGeo, holoPlaneMat);
+    // Posicionado levemente à esquerda e virado sutilmente para o jogador
+    holoBoard.position.set(-1.45, 1.65, 0.45);
+    holoBoard.rotation.y = Math.PI / 4.2;
+    scene.add(holoBoard);
+
+    // Moldura cibernética do holograma
+    const holoBorderGeo = new THREE.EdgesGeometry(holoPlaneGeo);
+    const holoBorderMat = new THREE.LineBasicMaterial({ color: 0x38bdf8 });
+    const holoBorder = new THREE.LineSegments(holoBorderGeo, holoBorderMat);
+    holoBoard.add(holoBorder);
+
+    // Botão holográfico 3D "DESBLOQUEAR / ABRIR" posicionado abaixo do painel
+    const vrBtnCanvas = document.createElement('canvas');
+    vrBtnCanvas.width = 512;
+    vrBtnCanvas.height = 160;
+    const bctx = vrBtnCanvas.getContext('2d');
+    const vrBtnTexture = new THREE.CanvasTexture(vrBtnCanvas);
+
+    const vrBtnGeo = new THREE.PlaneGeometry(0.85, 0.28);
+    const vrBtnMat = new THREE.MeshBasicMaterial({
+      map: vrBtnTexture,
+      transparent: true,
+      side: THREE.DoubleSide
+    });
+    const vrHoloButton = new THREE.Mesh(vrBtnGeo, vrBtnMat);
+    vrHoloButton.position.set(-1.45, 0.92, 0.45);
+    vrHoloButton.rotation.y = Math.PI / 4.2;
+    vrHoloButton.userData = { isActionButton: true };
+    interactiveObjects.push(vrHoloButton);
+    scene.add(vrHoloButton);
+
+    let activeTechIndex = 0;
+    let isBoxOpen = false;
+    let isOpening = false;
+    let lidAngle = 0;
+    const MAX_LID_ANGLE = Math.PI * 0.65; // Abertura ampla de ~117°
+
+    function updateHologramCanvas() {
+      const w = holoCanvas.width;
+      const h = holoCanvas.height;
+
+      // Fundo holográfico translúcido
+      hctx.clearRect(0, 0, w, h);
+      hctx.fillStyle = 'rgba(7, 10, 25, 0.88)';
+      hctx.fillRect(0, 0, w, h);
+
+      // Borda decorativa interna
+      hctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+      hctx.lineWidth = 6;
+      hctx.strokeRect(20, 20, w - 40, h - 40);
+
+      // Cabeçalho
+      hctx.fillStyle = '#f59e0b';
+      hctx.font = 'bold 36px Rajdhani, sans-serif';
+      hctx.fillText('DIAGNÓSTICO ARQUIVÍSTICO // ANÁLISE DE VETORES', 50, 75);
+
+      hctx.strokeStyle = '#38bdf8';
+      hctx.lineWidth = 2;
+      hctx.beginPath();
+      hctx.moveTo(50, 95);
+      hctx.lineTo(w - 50, 95);
+      hctx.stroke();
+
+      // Lista lateral de tecnologias
+      const itemH = 85;
+      TECH_DATA.forEach((tech, idx) => {
+        const topY = 130 + idx * itemH;
+        const isSelected = idx === activeTechIndex;
+
+        if (isSelected) {
+          hctx.fillStyle = 'rgba(245, 158, 11, 0.22)';
+          hctx.fillRect(45, topY - 10, 340, itemH - 12);
+          hctx.strokeStyle = '#fbbf24';
+          hctx.lineWidth = 3;
+          hctx.strokeRect(45, topY - 10, 340, itemH - 12);
+        }
+
+        hctx.fillStyle = isSelected ? '#ffffff' : '#94a3b8';
+        hctx.font = 'bold 32px Rajdhani, sans-serif';
+        hctx.fillText(`${tech.icon}  ${tech.title.split('&')[0]}`, 65, topY + 36);
+
+        hctx.font = '20px Rajdhani, sans-serif';
+        hctx.fillStyle = tech.color;
+        hctx.fillText(tech.category, 105, topY + 62);
+      });
+
+      // Divisor vertical
+      hctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      hctx.beginPath();
+      hctx.moveTo(410, 115);
+      hctx.lineTo(410, h - 50);
+      hctx.stroke();
+
+      // Painel de Detalhes da Tecnologia Selecionada
+      const curr = TECH_DATA[activeTechIndex];
+      hctx.fillStyle = curr.color;
+      hctx.font = 'bold 44px Rajdhani, sans-serif';
+      hctx.fillText(curr.title, 440, 170);
+
+      hctx.fillStyle = '#38bdf8';
+      hctx.font = '26px Rajdhani, sans-serif';
+      hctx.fillText(`CLASSIFICAÇÃO: ${curr.category.toUpperCase()}`, 440, 215);
+
+      // Texto de descrição em múltiplas linhas
+      hctx.fillStyle = '#e2e8f0';
+      hctx.font = '28px Rajdhani, sans-serif';
+      wrapText(hctx, curr.desc, 440, 280, 520, 38);
+
+      // Status do Selo Mítico no Holograma
+      hctx.fillStyle = isBoxOpen ? '#ef4444' : '#10b981';
+      hctx.font = 'bold 30px Rajdhani, sans-serif';
+      hctx.fillText(
+        isBoxOpen ? 'STATUS DO SELO: ROMPIDO // ENTIDADES LIBERADAS' : 'STATUS DO SELO: ATIVO // CONTENÇÃO TOTAL',
+        440,
+        580
+      );
+
+      // Subtexto da Esperança
+      if (isBoxOpen) {
+        hctx.fillStyle = '#fbbf24';
+        hctx.font = 'italic 26px Rajdhani, sans-serif';
+        hctx.fillText('ELPIS (A ESPERANÇA) PERMANECE COMO GUIA DA HUMANIDADE.', 440, 630);
+      } else {
+        hctx.fillStyle = '#94a3b8';
+        hctx.font = '24px Rajdhani, sans-serif';
+        hctx.fillText('Clique nas abas ou na Caixa para executar a liberação do vetor.', 440, 630);
+      }
+
+      holoTexture.needsUpdate = true;
+    }
+
+    function updateHoloButtonCanvas() {
+      bctx.clearRect(0, 0, 512, 160);
+      bctx.fillStyle = isBoxOpen ? 'rgba(220, 38, 38, 0.85)' : 'rgba(217, 119, 6, 0.85)';
+      bctx.fillRect(10, 10, 492, 140);
+      bctx.strokeStyle = '#ffffff';
+      bctx.lineWidth = 6;
+      bctx.strokeRect(10, 10, 492, 140);
+
+      bctx.fillStyle = '#ffffff';
+      bctx.font = 'bold 36px Rajdhani, sans-serif';
+      bctx.textAlign = 'center';
+      const label = isBoxOpen ? 'RESTAURAR CONTENÇÃO' : 'DESBLOQUEAR SELO / ABRIR';
+      bctx.fillText(label, 256, 92);
+      bctx.textAlign = 'left';
+
+      vrBtnTexture.needsUpdate = true;
+    }
+
+    function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+      const words = text.split(' ');
+      let line = '';
+      for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + ' ';
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && n > 0) {
+          ctx.fillText(line, x, y);
+          line = words[n] + ' ';
+          y += lineHeight;
+        } else {
+          line = testLine;
+        }
+      }
+      ctx.fillText(line, x, y);
+    }
+
+    updateHologramCanvas();
+    updateHoloButtonCanvas();
+
+    /* =====================================================================
+       9. SUPORTE A CONTROLADORES META QUEST 2 (WebXR Laser Rays)
+       ===================================================================== */
+    const controllers = [];
+    const controllerGrips = [];
+
+    // Linha do feixe de laser para os controladores
+    const rayGeo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(0, 0, -4)
+    ]);
+    const rayMat = new THREE.LineBasicMaterial({
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.7
+    });
+
+    for (let i = 0; i < 2; i++) {
+      const controller = renderer.xr.getController(i);
+      controller.addEventListener('selectstart', onSelectStart);
+      controller.addEventListener('selectend', onSelectEnd);
+      controller.addEventListener('connected', (e) => {
+        document.getElementById('mode-indicator').innerText = `Modo: Meta Quest 2 (${e.data.handedness})`;
+      });
+      scene.add(controller);
+      controllers.push(controller);
+
+      const laser = new THREE.Line(rayGeo, rayMat);
+      laser.name = 'laser';
+      controller.add(laser);
+
+      // Ponto de mira luminoso na ponta
+      const reticleGeo = new THREE.RingGeometry(0.015, 0.025, 32);
+      const reticleMat = new THREE.MeshBasicMaterial({ color: 0xfacc15, side: THREE.DoubleSide });
+      const reticle = new THREE.Mesh(reticleGeo, reticleMat);
+      reticle.position.z = -4;
+      controller.add(reticle);
+    }
+
+    const tempMatrix = new THREE.Matrix4();
+    const raycaster = new THREE.Raycaster();
+
+    function onSelectStart(event) {
+      const controller = event.target;
+      tempMatrix.identity().extractRotation(controller.matrixWorld);
+      raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+      raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+
+      const intersects = raycaster.intersectObjects(interactiveObjects, true);
+      if (intersects.length > 0) {
+        sound.playClickSound();
+        handleInteraction(intersects[0].object);
+      }
+    }
+
+    function onSelectEnd(event) {
+      // Feedback adicional caso necessário
+    }
+
+    /* =====================================================================
+       10. LÓGICA DE INTERAÇÃO & ABERTURA DA CAIXA DE PANDORA
+       ===================================================================== */
+    function togglePandoraBox() {
+      if (isOpening) return;
+      sound.init();
+
+      if (!isBoxOpen) {
+        // Abrir Caixa
+        isOpening = true;
+        sound.playOpenBoxSequence();
+        document.getElementById('seal-status-text').innerText = 'ROMPENDO SELO...';
+        document.getElementById('seal-status-text').className = 'text-sm md:text-base font-bold text-amber-400 tracking-wider animate-pulse';
+
+        // Animação de rotação da tampa com interpolação
+        const startAngle = lidPivot.rotation.x;
+        const targetAngle = -MAX_LID_ANGLE;
+        const duration = 2400; // ms
+        const startTime = performance.now();
+
+        function animateOpen(time) {
+          const elapsed = time - startTime;
+          const progress = Math.min(elapsed / duration, 1.0);
+          // Curva cúbica suave (EaseOutCubic)
+          const ease = 1 - Math.pow(1 - progress, 3);
+
+          lidPivot.rotation.x = startAngle + (targetAngle - startAngle) * ease;
+          boxInnerLight.intensity = ease * 4.5;
+          dataStreamBeam.material.opacity = ease * 0.65;
+          dataStreamBeam.material.color.setHex(progress > 0.6 ? 0x38bdf8 : 0x9333ea);
+
+          // Alterar cor do selo frontal para vermelho enquanto rompe
+          sealMat.color.setHex(0xef4444);
+          sealMat.emissive.setHex(0xef4444);
+
+          // Disparo das partículas dos males
+          evilMat.opacity = Math.min(progress * 1.5, 0.85);
+
+          // Revelar e expandir os cartões holográficos de informação
+          hologramPanels.forEach((card, idx) => {
+            const cardDelay = idx * 0.04;
+            const cardProg = Math.max(0, Math.min(1.0, (progress - cardDelay) / 0.6));
+            const cardEase = 1 - Math.pow(1 - cardProg, 3);
+
+            card.material.opacity = cardEase * 0.95;
+            const currentScale = 0.01 + cardEase * 0.99;
+            card.scale.set(currentScale, currentScale, currentScale);
+
+            // Elevação e dispersão em espiral para fora da caixa
+            const angle = card.userData.baseAngle + (1 - cardEase) * 3;
+            const radius = card.userData.baseRadius * cardEase;
+            card.position.x = Math.cos(angle) * radius;
+            card.position.z = Math.sin(angle) * radius;
+            card.position.y = 1.15 + (card.userData.targetY - 1.15) * cardEase;
+
+            // Virar para o jogador / centro
+            card.lookAt(camera.position);
+          });
+
+          if (progress < 1.0) {
+            requestAnimationFrame(animateOpen);
+          } else {
+            isBoxOpen = true;
+            isOpening = false;
+            document.getElementById('seal-status-text').innerText = 'SELO ROMPIDO // DADOS LIBERADOS';
+            document.getElementById('seal-status-text').className = 'text-sm md:text-base font-bold text-red-400 tracking-wider';
+            document.getElementById('btn-main-trigger').innerText = 'Restaurar Contenção';
+            updateHologramCanvas();
+            updateHoloButtonCanvas();
+
+            // Despertar da centelha de esperança (Elpis)
+            hopeMat.opacity = 0.9;
+            hopeOrbMat.opacity = 0.85;
+          }
+        }
+        requestAnimationFrame(animateOpen);
+
+      } else {
+        // Fechar Caixa / Restaurar Contenção
+        isOpening = true;
+        sound.playClickSound();
+        const startAngle = lidPivot.rotation.x;
+        const targetAngle = 0;
+        const duration = 1200;
+        const startTime = performance.now();
+
+        function animateClose(time) {
+          const elapsed = time - startTime;
+          const progress = Math.min(elapsed / duration, 1.0);
+          const ease = 1 - Math.pow(1 - progress, 2);
+
+          lidPivot.rotation.x = startAngle + (targetAngle - startAngle) * ease;
+          boxInnerLight.intensity = (1 - ease) * 4.5;
+          dataStreamBeam.material.opacity = (1 - ease) * 0.65;
+          evilMat.opacity = (1 - ease) * 0.85;
+          hopeMat.opacity = (1 - ease) * 0.9;
+          hopeOrbMat.opacity = (1 - ease) * 0.85;
+
+          // Recolher todos os fragmentos de informação de volta para a caixa
+          hologramPanels.forEach((card) => {
+            card.material.opacity = (1 - ease) * 0.95;
+            const currentScale = Math.max(0.01, (1 - ease));
+            card.scale.set(currentScale, currentScale, currentScale);
+            card.position.x *= (1 - ease);
+            card.position.z *= (1 - ease);
+            card.position.y = 1.15 + (card.userData.targetY - 1.15) * (1 - ease);
+          });
+
+          if (progress < 1.0) {
+            requestAnimationFrame(animateClose);
+          } else {
+            isBoxOpen = false;
+            isOpening = false;
+            sealMat.color.setHex(0x10b981);
+            sealMat.emissive.setHex(0x10b981);
+            document.getElementById('seal-status-text').innerText = 'SELADO // 100%';
+            document.getElementById('seal-status-text').className = 'text-sm md:text-base font-bold text-emerald-400 tracking-wider';
+            document.getElementById('btn-main-trigger').innerText = 'Desbloquear Selo';
+            updateHologramCanvas();
+            updateHoloButtonCanvas();
+          }
+        }
+        requestAnimationFrame(animateClose);
+      }
+    }
+
+    function handleInteraction(obj) {
+      if (obj.userData.isChest || obj.userData.isActionButton) {
+        togglePandoraBox();
+        return;
+      }
+
+      // Se clicar ou apontar para um dos fragmentos holográficos de informação
+      if (obj.userData.isInfoCard) {
+        const info = obj.userData.data;
+        const modal = document.getElementById('info-modal');
+        const mTitle = document.getElementById('modal-title');
+        const mDesc = document.getElementById('modal-desc');
+
+        if (mTitle && mDesc && modal) {
+          mTitle.innerText = `${info.icon} ${info.title} (${info.code})`;
+          mTitle.style.color = info.color;
+          mDesc.innerHTML = `
+            <div class="mb-3 text-xs uppercase font-bold tracking-wider" style="color: ${info.color}">
+              Nível de Risco Sistêmico: <span class="text-white bg-white/10 px-2 py-0.5 rounded">${info.risk}</span>
+            </div>
+            <p class="text-sm text-gray-200 leading-relaxed">${info.text}</p>
+            <div class="mt-4 pt-3 border-t border-white/10 text-xs text-amber-300">
+              ⚡ Arquivo decodificado em tempo real a partir do núcleo da Caixa de Pandora.
+            </div>
+          `;
+          modal.classList.remove('hidden');
+        }
+
+        // Destaque visual temporário no cartão 3D
+        obj.scale.multiplyScalar(1.25);
+        setTimeout(() => {
+          if (isBoxOpen) obj.scale.set(1.0, 1.0, 1.0);
+        }, 350);
+      }
+    }
+
+    // Fechar modal 2D
+    const modalCloseBtn = document.getElementById('modal-close-btn');
+    if (modalCloseBtn) {
+      modalCloseBtn.addEventListener('click', () => {
+        document.getElementById('info-modal').classList.add('hidden');
+      });
+    }
+
+    // Interação via Mouse e Toque (Desktop / Mobile)
+    const mouse = new THREE.Vector2();
+    window.addEventListener('pointerdown', (e) => {
+      // Ignora se o clique for na interface HTML 2D
+      if (e.target.closest('#hud-overlay') || e.target.closest('#VRButton') || e.target.closest('#info-modal')) {
+        return;
+      }
+
+      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+
+      const intersects = raycaster.intersectObjects(interactiveObjects, true);
+      if (intersects.length > 0) {
+        sound.playClickSound();
+        handleInteraction(intersects[0].object);
+      }
+    });
+
+    // Alternar tecnologias no holograma a cada intervalo de tempo para dinamismo
+    setInterval(() => {
+      if (!isOpening) {
+        activeTechIndex = (activeTechIndex + 1) % TECH_DATA.length;
+        updateHologramCanvas();
+      }
+    }, 7000);
+
+    /* =====================================================================
+       11. EVENTOS DA INTERFACE 2D (HUD)
+       ===================================================================== */
+    const btnMainTrigger = document.getElementById('btn-main-trigger');
+    btnMainTrigger.addEventListener('click', () => {
+      togglePandoraBox();
+    });
+
+    const btnAudioToggle = document.getElementById('btn-audio-toggle');
+    const audioLabel = document.getElementById('audio-label');
+    btnAudioToggle.addEventListener('click', () => {
+      sound.init();
+      const enabled = sound.toggle();
+      audioLabel.innerText = enabled ? 'Áudio: Ativo' : 'Áudio: Mudo';
+      btnAudioToggle.className = enabled 
+        ? 'bg-gray-900/80 hover:bg-gray-800 text-amber-300 border border-amber-500/40 px-3.5 py-2 rounded-xl text-xs font-semibold backdrop-blur transition-all flex items-center gap-2'
+        : 'bg-gray-900/80 hover:bg-gray-800 text-gray-500 border border-gray-700 px-3.5 py-2 rounded-xl text-xs font-semibold backdrop-blur transition-all flex items-center gap-2';
+    });
+
+    /* =====================================================================
+       12. LOOP PRINCIPAL DE ANIMAÇÃO & RENDERIZAÇÃO
+       ===================================================================== */
+    const clock = new THREE.Clock();
+
+    function renderLoop(timestamp, frame) {
+      const delta = clock.getDelta();
+      const elapsed = clock.getElapsedTime();
+
+      // 1. Atualizar controles se não estiver em VR
+      if (!renderer.xr.isPresenting) {
+        controls.update();
+      }
+
+      // 2. Animação de rotação sutil dos anéis rúnicos do templo
+      runes1.rotation.y = elapsed * 0.12;
+      runes2.rotation.y = -elapsed * 0.08;
+      floatRing.rotation.z = elapsed * 0.8;
+
+      // 3. Levitação suave e oscilação da Caixa de Pandora
+      const hoverY = Math.sin(elapsed * 1.5) * 0.02;
+      boxRoot.position.y = 1.08 + hoverY;
+
+      // 4. Animação e física das Partículas dos Males
+      if (evilMat.opacity > 0.01) {
+        const positions = evilGeo.attributes.position.array;
+        for (let i = 0; i < EVIL_COUNT; i++) {
+          const v = evilVelo[i];
+          positions[i * 3 + 0] += v.x * delta;
+          positions[i * 3 + 1] += v.y * delta;
+          positions[i * 3 + 2] += v.z * delta;
+
+          // Espiral de caos
+          positions[i * 3 + 0] += Math.sin(elapsed * 4 + i) * 0.015;
+          positions[i * 3 + 2] += Math.cos(elapsed * 4 + i) * 0.015;
+
+          // Renascer partículas no interior da caixa
+          if (positions[i * 3 + 1] > 4.5 || Math.abs(positions[i * 3 + 0]) > 3.5) {
+            positions[i * 3 + 0] = (Math.random() - 0.5) * 0.2;
+            positions[i * 3 + 1] = 1.25;
+            positions[i * 3 + 2] = (Math.random() - 0.5) * 0.2;
+          }
+        }
+        evilGeo.attributes.position.needsUpdate = true;
+      }
+
+      // 5. Animação da Centelha da Esperança (Elpis)
+      if (hopeMat.opacity > 0.01) {
+        hopeOrb.position.y = 1.45 + Math.sin(elapsed * 2.5) * 0.08;
+        const hPositions = hopeGeo.attributes.position.array;
+        for (let i = 0; i < HOPE_COUNT; i++) {
+          const hv = hopeVelo[i];
+          hv.ang += hv.speed * delta;
+          hPositions[i * 3 + 0] = hopeOrb.position.x + Math.cos(hv.ang) * hv.rad;
+          hPositions[i * 3 + 1] = hopeOrb.position.y + hv.yOffset + Math.sin(elapsed * 3 + i) * 0.05;
+          hPositions[i * 3 + 2] = hopeOrb.position.z + Math.sin(hv.ang) * hv.rad;
+        }
+        hopeGeo.attributes.position.needsUpdate = true;
+      }
+
+      // 6. Rotação orbital e orientação dos Cartões de Informação
+      if (isBoxOpen && !isOpening) {
+        hologramPanels.forEach((card) => {
+          const ud = card.userData;
+          ud.baseAngle += ud.speed * delta * 0.4;
+          const currentRad = ud.baseRadius;
+          card.position.x = Math.cos(ud.baseAngle) * currentRad;
+          card.position.z = Math.sin(ud.baseAngle) * currentRad;
+          card.position.y = ud.targetY + Math.sin(elapsed * 2.0 + ud.index) * 0.05;
+
+          // Cada cartão olha dinamicamente para o ponto de vista do usuário/câmera
+          card.lookAt(camera.position);
+        });
+
+        // Rotação do feixe vertical de transmissão
+        dataStreamBeam.rotation.y += delta * 1.5;
+      }
+
+      // 7. Flutuação suave do Holograma
+      holoBoard.position.y = 1.65 + Math.sin(elapsed * 1.8) * 0.03;
+      vrHoloButton.position.y = 0.92 + Math.sin(elapsed * 1.8) * 0.03;
+
+      // 8. Renderização compatível com WebXR
+      renderer.render(scene, camera);
+    }
+
+    // O loop deve usar setAnimationLoop para garantir suporte ao WebXR
+    renderer.setAnimationLoop(renderLoop);
+
+    // Redimensionamento responsivo de tela
+    window.addEventListener('resize', onWindowResize);
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+  </script>
+</body>
+</html>
