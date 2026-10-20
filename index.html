@@ -58,7 +58,7 @@
 
     <footer class="flex flex-col md:flex-row justify-between items-end gap-3 pb-16 md:pb-2">
       <div class="pointer-events-auto bg-black/60 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 text-xs text-gray-300 max-w-sm">
-        <p><span class="text-amber-400 font-bold">Controles:</span> No desktop, arraste o mouse para orbitar e clique na Caixa ou nos painéis. No <strong>Meta Quest 2</strong>, aperte <strong>"ENTRAR NO VR"</strong>, aponte e use o gatilho; o analógico esquerdo caminha pelo templo.</p>
+        <p><span class="text-amber-400 font-bold">Experiência:</span> clique em <strong>Iniciar Experiência</strong> para ouvir a introdução; a Caixa se abre ao final. Clique nos cartões para lê-los de perto (Esc volta). No <strong>Meta Quest 2</strong>, aperte <strong>"ENTRAR NO VR"</strong>: a introdução começa sozinha após 3 segundos. Gatilho seleciona; analógico esquerdo caminha.</p>
       </div>
       <div class="pointer-events-auto flex items-center gap-3">
         <button id="btn-quality" class="bg-gray-900/80 hover:bg-gray-800 text-sky-300 border border-sky-500/40 px-3.5 py-2 rounded-xl text-xs font-semibold backdrop-blur transition-all">
@@ -69,7 +69,7 @@
           <span id="audio-label">Áudio: Ativo</span>
         </button>
         <button id="btn-main-trigger" class="bg-gradient-to-r from-amber-600 via-purple-600 to-indigo-600 hover:from-amber-500 hover:to-indigo-500 text-white font-bold px-6 py-2.5 rounded-xl text-sm tracking-wider uppercase shadow-lg shadow-purple-900/50 border border-amber-300/40 transition-all transform hover:scale-105 active:scale-95">
-          Desbloquear Selo
+          Iniciar Experiência
         </button>
       </div>
     </footer>
@@ -90,14 +90,14 @@
        1. MOTOR DE ÁUDIO SINTETIZADO (Web Audio API)
        ===================================================================== */
     class SoundEngine {
-      constructor() { this.ctx = null; this.masterGain = null; this.enabled = true; }
+      constructor() { this.ctx = null; this.masterGain = null; this.enabled = true; this.level = 0.5; }
 
       init() {
         if (this.ctx) return;
         const AC = window.AudioContext || window.webkitAudioContext;
         this.ctx = new AC();
         this.masterGain = this.ctx.createGain();
-        this.masterGain.gain.setValueAtTime(this.enabled ? 0.5 : 0, this.ctx.currentTime);
+        this.masterGain.gain.setValueAtTime(this.enabled ? this.level : 0, this.ctx.currentTime);
         this.masterGain.connect(this.ctx.destination);
         this.startAmbience();
       }
@@ -203,9 +203,14 @@
         });
       }
 
+      setLevel(v) {
+        this.level = v;
+        if (this.masterGain && this.enabled) this.masterGain.gain.setTargetAtTime(v, this.ctx.currentTime, 0.4);
+      }
+
       toggle() {
         this.enabled = !this.enabled;
-        if (this.masterGain) this.masterGain.gain.setValueAtTime(this.enabled ? 0.5 : 0.0, this.ctx.currentTime);
+        if (this.masterGain) this.masterGain.gain.setValueAtTime(this.enabled ? this.level : 0.0, this.ctx.currentTime);
         return this.enabled;
       }
     }
@@ -217,33 +222,62 @@
     /* =====================================================================
        2. DADOS
        ===================================================================== */
-    const TECH_DATA = [
-      { id:'ai', title:'Inteligência Artificial & AGIs', icon:'◈', color:'#a855f7', category:'O Novo Prometeu',
-        desc:'A centelha do pensamento artificial. O risco de desalinhamento de valores e perda de controle cognitivo, contra a virtude de curar doenças e solucionar a física fundamental.' },
-      { id:'bio', title:'Biotecnologia & CRISPR', icon:'⬡', color:'#ec4899', category:'Gênese Sintética',
-        desc:'A reescrita do código da vida. A ameaça da bioguerra e eugenia sintética versus a erradicação de patologias hereditárias e imortalidade celular.' },
-      { id:'nano', title:'Nanotecnologia & Matéria', icon:'◇', color:'#38bdf8', category:'Manipulação Atômica',
-        desc:'O domínio sobre átomos individuais. O temido cenário "Grey Goo" (consumo de biomassa) versus a transmutação sustentável de recursos e energia limpa infinita.' },
-      { id:'cyber', title:'Ciberespaço & Consciência', icon:'❖', color:'#22c55e', category:'Mente Conectada',
-        desc:'Interfaces cérebro-computador e perda de privacidade neural versus a comunhão global de conhecimento e expansão sináptica.' },
-      { id:'hope', title:'Elpis: A Esperança Ativa', icon:'★', color:'#fbbf24', category:'A Luz no Fundo da Caixa',
-        desc:'No mito, a Esperança permaneceu retida sob a borda. Na era moderna, ela representa a sabedoria humana, a governança ética e o propósito compartilhado.' }
+    // Introdução narrada. "show" = legenda; "say" = texto falado (com ajuste de pronúncia).
+    const NARRATION = [
+      { show: 'Em tempos de redes sociais... A linguagem simples e acessível aproxima as pessoas.', pause: 250 },
+      { show: 'Indignação dá mais visualização que testemunho. Raiva circula mais depressa que explicação — hate bait.', say: 'Indignação dá mais visualização que testemunho. Raiva circula mais depressa que explicação. Hêit bêit.', pause: 250 },
+      { show: 'Na perspectiva da Psicologia, o hate bait pode explorar vieses cognitivos, identidade grupal, emoções negativas e a necessidade de defender as próprias crenças.', say: 'Na perspectiva da Psicologia, o hêit bêit pode explorar vieses cognitivos, identidade grupal, emoções negativas e a necessidade de defender as próprias crenças.', pause: 200 },
+      { show: 'Em resumo: é uma estratégia de manipulação da atenção que transforma emoções negativas em engajamento digital.', pause: 300 },
+      { show: 'O algoritmo funciona com o aumento de engajamento para aumentar o alcance. Por isso, um algoritmo pode identificar padrões de comportamento, analisar preferências e estimar a probabilidade de uma pessoa realizar determinada ação.', pause: 250 },
+      { show: 'Entretanto, identificar um padrão não é o mesmo que compreender o significado que aquela experiência tem para a pessoa, principalmente em um contexto social com implicações e questões éticas.', pause: 300 },
+      { show: 'A Caixa de Pandora simboliza a abertura do encontro entre a essência humana e a IA. A consciência humana representa a possibilidade de reconhecer nossas experiências e refletir sobre como agimos com autonomia. Afinal, quem está no controle?',
+        say: 'A Caixa de Pandora simboliza a abertura do encontro entre a essência humana e a I A. A consciência humana representa a possibilidade de reconhecer nossas experiências e refletir sobre como agimos com autonomia. Afinal, quem está no controle?', opens: true, pause: 300 }
     ];
 
-    const DATA_FRAGMENTS = [
-      { code:"VETOR-01 // IA-AGI", title:"Superinteligência Não-Alinhada", risk:"CRÍTICO", text:"Modelos autoreflexivos com capacidades cognitivas autônomas. Risco de desalinhamento existencial.", color:"#c084fc", icon:"🧠" },
-      { code:"VETOR-02 // BIO-CRISPR", title:"Engenharia Genômica Germinativa", risk:"SEVERO", text:"Edição hereditária humana e síntese de patógenos desenhados em computador sem antídotos.", color:"#f472b6", icon:"🧬" },
-      { code:"VETOR-03 // NANO-TECH", title:"Montadores Moleculares Autônomos", risk:"ALTO", text:"Proliferação molecular não contida ('Grey Goo') e decomposição de matéria biológica.", color:"#38bdf8", icon:"⬡" },
-      { code:"VETOR-04 // CYBER-WAR", title:"Guerra Cibernética Autônoma", risk:"CRÍTICO", text:"Ataques sem intervenção humana paralisando redes de suporte à vida e matrizes elétricas.", color:"#ef4444", icon:"⚡" },
-      { code:"VETOR-05 // QUANTUM-ENC", title:"Quebra da Criptografia Quântica", risk:"IMINENTE", text:"Colapso imediato da segurança de dados global, segredos de estado e privacidade financeira.", color:"#06b6d4", icon:"🔐" },
-      { code:"VETOR-06 // DEEP-SYNTH", title:"Realidade Sintética Indistinguível", risk:"SEVERO", text:"Erosão total da confiança epistemológica através de simulações hiper-realistas.", color:"#fb923c", icon:"👁️" },
-      { code:"VETOR-07 // NEURO-LINK", title:"Controle e Monitoramento Cognitivo", risk:"ALTO", text:"Extração direta de pensamentos, telemetria neural comercial e manipulação ideológica subliminar.", color:"#a855f7", icon:"📡" },
-      { code:"VETOR-08 // AUTO-DRONES", title:"Enxames Bélicos Autônomos", risk:"EXTREMO", text:"Microdrones letais coordenados por redes neurais de abate sem veto ético humano.", color:"#e11d48", icon:"🎯" },
-      { code:"VETOR-09 // BIO-CHIMERA", title:"Quimeras Biomecânicas", risk:"SEVERO", text:"Fusão de tecidos orgânicos com nanossensores e cibernética sintética celular.", color:"#4ade80", icon:"☣️" },
-      { code:"VETOR-10 // INFO-OVERLOAD", title:"Infodemia e Ruptura Social", risk:"ALTO", text:"Saturação de estímulos cognitivos levando à fragmentação da atenção coletiva.", color:"#eab308", icon:"🌐" },
-      { code:"VETOR-11 // ELPIS-ALPHA", title:"Governança Ética Global", risk:"ESPERANÇA", text:"Pactos globais de contenção, transparência e alinhamento do progresso à dignidade humana.", color:"#fde047", icon:"✨" },
-      { code:"VETOR-12 // ELPIS-OMEGA", title:"Medicina Regenerativa & Longevidade", risk:"ESPERANÇA", text:"Erradicação definitiva de doenças genéticas, regeneração celular e sabedoria compartilhada.", color:"#38bdf8", icon:"🕊️" }
+    const SOURCES = [
+      'U.S. Surgeon General. (2023). Social Media and Youth Mental Health.',
+      'Guess, A. M., et al. (2023). How do social media feed algorithms affect attitudes and behavior in an election campaign? Science.',
+      'Nature (2026). The political effects of X’s feed algorithm.',
+      'OECD. (2024). AI, Data Governance and Privacy.',
+      'UNESCO. Recommendation on the Ethics of Artificial Intelligence.',
+      'TIC Kids Online Brasil 2024, realizada pelo Cetic.br, ligado ao Núcleo de Informação e Coordenação do Ponto BR (NIC.br).'
     ];
+
+    // Cartões que saem da Caixa (ordem = posição no layout)
+    const CARDS = [
+      { group: 'tema', tag: '1 / 4', title: 'Consequências emocionais', color: '#f5b13a',
+        body: 'Sistemas que recomendam conteúdos com base no comportamento anterior podem aumentar a exposição repetida a temas que despertam medo, raiva, tristeza ou comparação social.',
+        risk: 'Sobrecarga emocional, sofrimento psicológico e dificuldade de interromper padrões de consumo prejudiciais. Os efeitos dependem do conteúdo e da pessoa.' },
+      { group: 'tema', tag: '2 / 4', title: 'Autonomia e liberdade de escolha', color: '#f5b13a',
+        body: 'Recomendações personalizadas podem facilitar decisões, mas também direcionar a atenção para determinados produtos, opiniões ou conteúdos sem que o usuário perceba claramente essa influência.',
+        risk: 'Confundir uma preferência pessoal com uma preferência reforçada pelo ambiente digital.' },
+      { group: 'tema', tag: '3 / 4', title: 'Privacidade e inferências sobre a pessoa', color: '#f5b13a',
+        body: 'Sistemas de IA podem utilizar grandes volumes de dados para inferir características, preferências e padrões pessoais. Isso levanta questões sobre consentimento, controle dos dados e usos que o indivíduo não esperava.',
+        risk: 'Perda de controle sobre informações pessoais e utilização indevida de inferências comportamentais.' },
+      { group: 'tema', tag: '4 / 4', title: 'Discriminação e desigualdade', color: '#f5b13a',
+        body: 'Algoritmos podem reproduzir ou ampliar vieses presentes nos dados e nos critérios usados para desenvolvê-los, afetando decisões em áreas como educação, trabalho e acesso a serviços.',
+        risk: 'Avaliações injustas e reprodução de desigualdades sociais. A UNESCO recomenda transparência, equidade e supervisão humana.' },
+      { group: 'conceito', tag: 'REDES SOCIAIS', title: 'Hate bait', color: '#c084fc',
+        paras: ['Indignação dá mais visualização que testemunho. Raiva circula mais depressa que explicação.',
+                'Na perspectiva da Psicologia, o hate bait pode explorar vieses cognitivos, identidade grupal, emoções negativas e a necessidade de defender as próprias crenças.',
+                'Em resumo: é uma estratégia de manipulação da atenção que transforma emoções negativas em engajamento digital.'] },
+      { group: 'conceito', tag: 'ALGORITMOS', title: 'O algoritmo', color: '#c084fc',
+        paras: ['O algoritmo funciona com o aumento de engajamento para aumentar o alcance.',
+                'Por isso, um algoritmo pode identificar padrões de comportamento, analisar preferências e estimar a probabilidade de uma pessoa realizar determinada ação.',
+                'Entretanto, identificar um padrão não é o mesmo que compreender o significado que aquela experiência tem para a pessoa, principalmente em um contexto social com implicações e questões éticas.'] },
+      { group: 'dados', tag: 'DADOS', color: '#38bdf8',
+        stats: [{ big: '83%', body: 'dos usuários de 9 a 17 anos têm presença nas plataformas digitais.' },
+                { big: '41%', body: 'dos usuários de 11 a 17 anos usam a Internet como fonte de apoio à saúde, embora a qualidade do conteúdo e a confiabilidade das fontes precisem ser avaliadas.' },
+                { big: '63%', body: 'dos usuários que acessaram o Instagram semanalmente' }] },
+      { group: 'regulacao', tag: 'INICIATIVA', title: 'My Feed, My Way', subtitle: '“Meu Feed, Meu Jeito”', color: '#4ade80',
+        body: 'A iniciativa foi anunciada pelo governo australiano em setembro de 2026 e propõe dar aos usuários maior controle sobre os algoritmos que organizam o conteúdo das redes sociais. A regulamentação está em consulta pública.' }
+    ];
+    CARDS.forEach(c => {
+      if (c.group === 'tema') c.say = `${c.title}. ${c.body} Risco: ${c.risk}`;
+      else if (c.group === 'conceito') c.say = `${c.title}. ${c.paras.join(' ')}`.replace('hate bait', 'hêit bêit').replace('Hate bait', 'Hêit bêit');
+      else if (c.group === 'dados') c.say = c.stats.map(x => `${x.big} ${x.body}`).join(' ');
+      else c.say = `My Feed, My Way. Meu Feed, Meu Jeito. ${c.body}`;
+    });
 
     /* =====================================================================
        3. UTILITÁRIOS PROCEDURAIS (ruído tileável + gerador de texturas PBR)
@@ -1003,35 +1037,79 @@
       ctx.fillText(line, x, y);
     }
 
-    function createInfoHoloTexture(info) {
-      const cvs = document.createElement('canvas'); cvs.width = 512; cvs.height = 320;
-      const ctx = cvs.getContext('2d');
-      ctx.fillStyle = 'rgba(6,9,24,0.9)'; ctx.fillRect(0, 0, 512, 320);
-      ctx.strokeStyle = info.color; ctx.lineWidth = 6; ctx.strokeRect(10, 10, 492, 300);
-      ctx.fillStyle = info.color; ctx.fillRect(10, 10, 492, 12);
-      ctx.font = 'bold 22px Rajdhani, sans-serif'; ctx.fillText(`${info.icon} ${info.code}`, 25, 48);
-      const riskColor = info.risk === 'ESPERANÇA' ? '#22c55e' : (info.risk === 'CRÍTICO' || info.risk === 'EXTREMO' ? '#ef4444' : '#f59e0b');
-      ctx.fillStyle = riskColor; ctx.font = 'bold 20px Rajdhani, sans-serif'; ctx.textAlign = 'right'; ctx.fillText(`RISCO: ${info.risk}`, 485, 48); ctx.textAlign = 'left';
-      ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(25, 65); ctx.lineTo(487, 65); ctx.stroke();
-      ctx.fillStyle = '#ffffff'; ctx.font = 'bold 30px Rajdhani, sans-serif'; wrapText(ctx, info.title, 25, 105, 460, 34);
-      ctx.fillStyle = '#cbd5e1'; ctx.font = '22px Rajdhani, sans-serif'; wrapText(ctx, info.text, 25, 185, 460, 28);
-      ctx.fillStyle = 'rgba(148,163,184,0.7)'; ctx.font = '16px Rajdhani, sans-serif'; ctx.fillText('// TOQUE OU MIRE COM O CONTROLE VR PARA FIXAR', 25, 295);
-      const t = new THREE.CanvasTexture(cvs); t.minFilter = THREE.LinearFilter; t.encoding = THREE.sRGBEncoding; return t;
+    function wrapY(ctx, text, x, y, maxW, lh) {
+      const words = text.split(' '); let line = '';
+      for (let n = 0; n < words.length; n++) {
+        const t = line + words[n] + ' ';
+        if (ctx.measureText(t).width > maxW && n > 0) { ctx.fillText(line, x, y); line = words[n] + ' '; y += lh; } else line = t;
+      }
+      ctx.fillText(line, x, y);
+      return y + lh;
     }
+
+    function createCardTexture(c) {
+      const W = 1024, H = 704;
+      const cvs = document.createElement('canvas'); cvs.width = W; cvs.height = H;
+      const ctx = cvs.getContext('2d');
+      const bg = ctx.createLinearGradient(0, 0, 0, H);
+      bg.addColorStop(0, 'rgba(10,14,34,0.97)'); bg.addColorStop(1, 'rgba(4,6,18,0.97)');
+      ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = c.color; ctx.lineWidth = 8; ctx.strokeRect(12, 12, W - 24, H - 24);
+      ctx.fillStyle = c.color; ctx.fillRect(12, 12, W - 24, 16);
+      ctx.textAlign = 'left';
+      ctx.font = 'bold 28px Rajdhani, sans-serif'; ctx.fillStyle = c.color; ctx.fillText(c.tag, 40, 74);
+      let y;
+      if (c.group === 'tema') {
+        ctx.fillStyle = '#ffffff'; ctx.font = 'bold 52px Rajdhani, sans-serif';
+        y = wrapY(ctx, c.title, 40, 140, 940, 56);
+        ctx.fillStyle = '#cbd5e1'; ctx.font = '33px Rajdhani, sans-serif';
+        y = wrapY(ctx, c.body, 40, y + 12, 944, 43);
+        ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(40, y + 2); ctx.lineTo(W - 40, y + 2); ctx.stroke();
+        ctx.fillStyle = '#f87171'; ctx.font = 'bold 28px Rajdhani, sans-serif'; ctx.fillText('RISCO', 40, y + 40);
+        ctx.fillStyle = '#fecaca'; ctx.font = '31px Rajdhani, sans-serif';
+        wrapY(ctx, c.risk, 40, y + 78, 944, 40);
+      } else if (c.group === 'conceito') {
+        ctx.fillStyle = '#ffffff'; ctx.font = 'bold 60px Rajdhani, sans-serif'; ctx.fillText(c.title, 40, 140);
+        ctx.fillStyle = '#e2e8f0'; ctx.font = '31px Rajdhani, sans-serif';
+        y = 196;
+        c.paras.forEach((p, k) => {
+          ctx.fillStyle = k === c.paras.length - 1 ? '#fde68a' : '#e2e8f0';
+          y = wrapY(ctx, p, 40, y, 944, 41) + 14;
+        });
+      } else if (c.group === 'dados') {
+        c.stats.forEach((st, k) => {
+          const y0 = 100 + k * 196;
+          if (k > 0) { ctx.strokeStyle = 'rgba(255,255,255,0.16)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(40, y0 - 10); ctx.lineTo(W - 40, y0 - 10); ctx.stroke(); }
+          ctx.fillStyle = c.color; ctx.font = 'bold 118px Cinzel, serif'; ctx.fillText(st.big, 36, y0 + 118);
+          ctx.fillStyle = '#e2e8f0'; ctx.font = '29px Rajdhani, sans-serif';
+          wrapY(ctx, st.body, 340, y0 + 52, 650, 37);
+        });
+      } else {
+        ctx.fillStyle = '#ffffff'; ctx.font = 'bold 66px Rajdhani, sans-serif'; ctx.fillText(c.title, 40, 160);
+        ctx.fillStyle = c.color; ctx.font = 'italic 40px Rajdhani, sans-serif'; ctx.fillText(c.subtitle, 40, 216);
+        ctx.fillStyle = '#cbd5e1'; ctx.font = '36px Rajdhani, sans-serif';
+        wrapY(ctx, c.body, 40, 296, 944, 48);
+      }
+      ctx.fillStyle = 'rgba(148,163,184,0.7)'; ctx.font = '20px Rajdhani, sans-serif';
+      ctx.fillText('// MIRE E APERTE O GATILHO PARA LER DE PERTO E OUVIR', 40, H - 22);
+      const t = new THREE.CanvasTexture(cvs); t.minFilter = THREE.LinearFilter; t.encoding = THREE.sRGBEncoding; t.anisotropy = MAX_ANISO; return t;
+    }
+
+    function polar(deg, y, r) { const a = deg * Math.PI / 180; return new THREE.Vector3(Math.sin(a) * r, y, -Math.cos(a) * r); }
+    // 4 temas na fileira alta; dados e iniciativa na fileira baixa (livres da linha de visão da caixa)
+    const CARD_HOME = [
+      polar(-60, 2.4, 2.8), polar(-21, 2.4, 2.8), polar(21, 2.4, 2.8), polar(60, 2.4, 2.8),
+      polar(-80, 1.1, 2.8), polar(-45, 1.1, 2.8), polar(45, 1.1, 2.8), polar(80, 1.1, 2.8)
+    ];
 
     const infoFragmentsGroup = new THREE.Group(); scene.add(infoFragmentsGroup);
     const hologramPanels = [];
-    DATA_FRAGMENTS.forEach((data, index) => {
-      const panelGeo = new THREE.PlaneGeometry(0.75, 0.47);
-      const panelMat = new THREE.MeshBasicMaterial({ map: createInfoHoloTexture(data), transparent: true, opacity: 0, side: THREE.DoubleSide, toneMapped: false });
-      const panel = new THREE.Mesh(panelGeo, panelMat);
+    CARDS.forEach((data, index) => {
+      const geo = new THREE.PlaneGeometry(1.64, 1.127);
+      const mat = new THREE.MeshBasicMaterial({ map: createCardTexture(data), transparent: true, opacity: 0, side: THREE.DoubleSide, toneMapped: false });
+      const panel = new THREE.Mesh(geo, mat);
       panel.position.set(0, CH_Y + 0.15, 0); panel.scale.set(0.01, 0.01, 0.01);
-      panel.userData = {
-        isInfoCard: true, data, index,
-        baseAngle: (index / DATA_FRAGMENTS.length) * Math.PI * 2, baseRadius: 1.8 + (index % 3) * 0.45,
-        targetY: 1.6 + ((index % 4) - 1.5) * 0.4, speed: 0.15 + (index % 3) * 0.08
-      };
-      panel.add(new THREE.LineSegments(new THREE.EdgesGeometry(panelGeo), new THREE.LineBasicMaterial({ color: new THREE.Color(data.color) })));
+      panel.userData = { isInfoCard: true, data, index, home: CARD_HOME[index].clone(), phase: index * 1.3, focused: false };
       infoFragmentsGroup.add(panel); hologramPanels.push(panel); interactiveObjects.push(panel);
     });
 
@@ -1047,51 +1125,87 @@
     const holoTexture = new THREE.CanvasTexture(holoCanvas); holoTexture.minFilter = THREE.LinearFilter; holoTexture.encoding = THREE.sRGBEncoding;
     const holoPlaneGeo = new THREE.PlaneGeometry(1.6, 1.2);
     const holoBoard = new THREE.Mesh(holoPlaneGeo, new THREE.MeshBasicMaterial({ map: holoTexture, transparent: true, opacity: 0.94, side: THREE.DoubleSide, toneMapped: false }));
-    holoBoard.position.set(-1.9, 1.65, 0.7); holoBoard.rotation.y = Math.PI / 3.6; scene.add(holoBoard);
+    holoBoard.position.set(-2.2, 1.55, 1.9); holoBoard.rotation.y = 1.2; scene.add(holoBoard);
     holoBoard.add(new THREE.LineSegments(new THREE.EdgesGeometry(holoPlaneGeo), new THREE.LineBasicMaterial({ color: 0x38bdf8 })));
 
     const vrBtnCanvas = document.createElement('canvas'); vrBtnCanvas.width = 512; vrBtnCanvas.height = 160;
     const bctx = vrBtnCanvas.getContext('2d');
     const vrBtnTexture = new THREE.CanvasTexture(vrBtnCanvas); vrBtnTexture.encoding = THREE.sRGBEncoding;
     const vrHoloButton = new THREE.Mesh(new THREE.PlaneGeometry(0.85, 0.28), new THREE.MeshBasicMaterial({ map: vrBtnTexture, transparent: true, side: THREE.DoubleSide, toneMapped: false }));
-    vrHoloButton.position.set(-1.9, 0.92, 0.7); vrHoloButton.rotation.y = Math.PI / 3.6;
+    vrHoloButton.position.set(-2.2, 0.82, 1.9); vrHoloButton.rotation.y = 1.2;
     vrHoloButton.userData = { isActionButton: true };
     interactiveObjects.push(vrHoloButton); scene.add(vrHoloButton);
 
-    let activeTechIndex = 0, isBoxOpen = false, isOpening = false;
+    /* ---- Conexões: filamentos de energia caixa → cartões, e correntes entre cartões do mesmo grupo ---- */
+    const BOX_ANCHOR = new THREE.Vector3(0, CH_Y + 0.15, 0);
+    const GROUP_COLOR = { tema: 0xf5b13a, conceito: 0xc084fc, dados: 0x38bdf8, regulacao: 0x4ade80 };
+    const linkMats = [], pulses = [];
+    let linkLevel = 0;
+    const focusPos = new THREE.Vector3(), tmpHome = new THREE.Vector3();
+
+    function addTube(curve, color) {
+      const m = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+      scene.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 28, 0.006, 6, false), m));
+      linkMats.push(m);
+    }
+    hologramPanels.forEach(card => {
+      const ud = card.userData, col = GROUP_COLOR[ud.data.group];
+      const mid = BOX_ANCHOR.clone().lerp(ud.home, 0.5); mid.y += 0.55;
+      const curve = new THREE.QuadraticBezierCurve3(BOX_ANCHOR.clone(), mid, ud.home.clone().add(new THREE.Vector3(0, -0.57, 0)));
+      addTube(curve, col);
+      for (let k = 0; k < 2; k++) {
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: dustTex, color: col, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+        sp.scale.set(0.16, 0.16, 1); scene.add(sp);
+        pulses.push({ sprite: sp, curve, t: k * 0.5 + Math.random() * 0.2, speed: 0.22 + Math.random() * 0.15 });
+      }
+    });
+    function chain(indices, color) {
+      for (let i = 0; i < indices.length - 1; i++) {
+        const a = hologramPanels[indices[i]].userData.home, b = hologramPanels[indices[i + 1]].userData.home;
+        const dir = new THREE.Vector3(b.x - a.x, 0, b.z - a.z).normalize();
+        addTube(new THREE.LineCurve3(a.clone().addScaledVector(dir, 0.86), b.clone().addScaledVector(dir, -0.86)), color);
+      }
+    }
+    chain([0, 1, 2, 3], GROUP_COLOR.tema);
+    chain([4, 5], GROUP_COLOR.conceito);
+    function setLinkLevel(v) { linkLevel = v; linkMats.forEach(m => { m.opacity = v * 0.55; }); }
+
+    let isBoxOpen = false, isOpening = false, narrating = false;
     const MAX_LID_ANGLE = Math.PI * 0.62;
 
     function updateHologramCanvas() {
       const w = holoCanvas.width, h = holoCanvas.height;
-      hctx.clearRect(0, 0, w, h); hctx.fillStyle = 'rgba(7,10,25,0.88)'; hctx.fillRect(0, 0, w, h);
+      hctx.clearRect(0, 0, w, h); hctx.fillStyle = 'rgba(7,10,25,0.9)'; hctx.fillRect(0, 0, w, h);
       hctx.strokeStyle = 'rgba(56,189,248,0.4)'; hctx.lineWidth = 6; hctx.strokeRect(20, 20, w - 40, h - 40);
-      hctx.fillStyle = '#f59e0b'; hctx.font = 'bold 36px Rajdhani, sans-serif'; hctx.fillText('DIAGNÓSTICO ARQUIVÍSTICO // ANÁLISE DE VETORES', 50, 75);
-      hctx.strokeStyle = '#38bdf8'; hctx.lineWidth = 2; hctx.beginPath(); hctx.moveTo(50, 95); hctx.lineTo(w - 50, 95); hctx.stroke();
-      const itemH = 85;
-      TECH_DATA.forEach((tech, idx) => {
-        const topY = 130 + idx * itemH, sel = idx === activeTechIndex;
-        if (sel) { hctx.fillStyle = 'rgba(245,158,11,0.22)'; hctx.fillRect(45, topY - 10, 340, itemH - 12); hctx.strokeStyle = '#fbbf24'; hctx.lineWidth = 3; hctx.strokeRect(45, topY - 10, 340, itemH - 12); }
-        hctx.fillStyle = sel ? '#ffffff' : '#94a3b8'; hctx.font = 'bold 32px Rajdhani, sans-serif'; hctx.fillText(`${tech.icon}  ${tech.title.split('&')[0]}`, 65, topY + 36);
-        hctx.font = '20px Rajdhani, sans-serif'; hctx.fillStyle = tech.color; hctx.fillText(tech.category, 105, topY + 62);
-      });
-      hctx.strokeStyle = 'rgba(255,255,255,0.15)'; hctx.beginPath(); hctx.moveTo(410, 115); hctx.lineTo(410, h - 50); hctx.stroke();
-      const cur = TECH_DATA[activeTechIndex];
-      hctx.fillStyle = cur.color; hctx.font = 'bold 44px Rajdhani, sans-serif'; hctx.fillText(cur.title, 440, 170);
-      hctx.fillStyle = '#38bdf8'; hctx.font = '26px Rajdhani, sans-serif'; hctx.fillText(`CLASSIFICAÇÃO: ${cur.category.toUpperCase()}`, 440, 215);
-      hctx.fillStyle = '#e2e8f0'; hctx.font = '28px Rajdhani, sans-serif'; wrapText(hctx, cur.desc, 440, 280, 520, 38);
-      hctx.fillStyle = isBoxOpen ? '#ef4444' : '#10b981'; hctx.font = 'bold 30px Rajdhani, sans-serif';
-      hctx.fillText(isBoxOpen ? 'STATUS DO SELO: ROMPIDO // ENTIDADES LIBERADAS' : 'STATUS DO SELO: ATIVO // CONTENÇÃO TOTAL', 440, 580);
-      if (isBoxOpen) { hctx.fillStyle = '#fbbf24'; hctx.font = 'italic 26px Rajdhani, sans-serif'; hctx.fillText('ELPIS (A ESPERANÇA) PERMANECE COMO GUIA DA HUMANIDADE.', 440, 630); }
-      else { hctx.fillStyle = '#94a3b8'; hctx.font = '24px Rajdhani, sans-serif'; hctx.fillText('Clique nas abas ou na Caixa para executar a liberação do vetor.', 440, 630); }
+      hctx.textAlign = 'left';
+      hctx.fillStyle = '#f59e0b'; hctx.font = 'bold 38px Rajdhani, sans-serif';
+      hctx.fillText('PROTOCOLO PANDORA // ' + (isBoxOpen ? 'FONTES' : (narrating ? 'INTRODUÇÃO' : 'AGUARDANDO')), 50, 80);
+      hctx.strokeStyle = '#38bdf8'; hctx.lineWidth = 2; hctx.beginPath(); hctx.moveTo(50, 102); hctx.lineTo(w - 50, 102); hctx.stroke();
+      if (isBoxOpen) {
+        hctx.fillStyle = '#e2e8f0'; hctx.font = '26px Rajdhani, sans-serif';
+        let y = 150;
+        SOURCES.forEach((src, i) => { y = wrapY(hctx, `${i + 1}.  ${src}`, 55, y, 910, 33) + 14; });
+        hctx.fillStyle = '#94a3b8'; hctx.font = 'italic 22px Rajdhani, sans-serif';
+        hctx.fillText('Elpis (a Esperança) permanece como guia da humanidade.', 55, h - 50);
+      } else if (narrating) {
+        hctx.fillStyle = '#38bdf8'; hctx.font = 'bold 54px Rajdhani, sans-serif'; hctx.fillText('INTRODUÇÃO EM CURSO', 55, 230);
+        hctx.fillStyle = '#e2e8f0'; hctx.font = '34px Rajdhani, sans-serif';
+        wrapY(hctx, 'Ouça a narração. A Caixa de Pandora se abrirá ao final.', 55, 300, 900, 46);
+      } else {
+        hctx.fillStyle = '#fbbf24'; hctx.font = 'bold 54px Rajdhani, sans-serif'; hctx.fillText('AGUARDANDO VISITANTE', 55, 230);
+        hctx.fillStyle = '#e2e8f0'; hctx.font = '34px Rajdhani, sans-serif';
+        wrapY(hctx, 'Aponte para a Caixa e aperte o gatilho, ou use o botão abaixo, para iniciar a introdução narrada.', 55, 300, 900, 46);
+      }
       holoTexture.needsUpdate = true;
     }
 
     function updateHoloButtonCanvas() {
       bctx.clearRect(0, 0, 512, 160);
-      bctx.fillStyle = isBoxOpen ? 'rgba(220,38,38,0.85)' : 'rgba(217,119,6,0.85)'; bctx.fillRect(10, 10, 492, 140);
+      bctx.fillStyle = narrating ? 'rgba(37,99,235,0.88)' : (isBoxOpen ? 'rgba(220,38,38,0.85)' : 'rgba(217,119,6,0.88)');
+      bctx.fillRect(10, 10, 492, 140);
       bctx.strokeStyle = '#ffffff'; bctx.lineWidth = 6; bctx.strokeRect(10, 10, 492, 140);
-      bctx.fillStyle = '#ffffff'; bctx.font = 'bold 36px Rajdhani, sans-serif'; bctx.textAlign = 'center';
-      bctx.fillText(isBoxOpen ? 'RESTAURAR CONTENÇÃO' : 'DESBLOQUEAR SELO / ABRIR', 256, 92); bctx.textAlign = 'left';
+      bctx.fillStyle = '#ffffff'; bctx.font = 'bold 38px Rajdhani, sans-serif'; bctx.textAlign = 'center';
+      bctx.fillText(narrating ? 'PULAR INTRODUÇÃO' : (isBoxOpen ? 'RESTAURAR CONTENÇÃO' : 'INICIAR EXPERIÊNCIA'), 256, 92); bctx.textAlign = 'left';
       vrBtnTexture.needsUpdate = true;
     }
     updateHologramCanvas(); updateHoloButtonCanvas();
@@ -1121,13 +1235,16 @@
       raycaster.ray.origin.setFromMatrixPosition(c.matrixWorld);
       raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
       const hits = raycaster.intersectObjects(interactiveObjects, true);
-      if (hits.length > 0) { sound.playClickSound(); handleInteraction(hits[0].object); }
+      handlePick(hits);
     }
 
     // Sessão VR: posição inicial fora do altar + qualidade reduzida
-    renderer.xr.addEventListener('sessionstart', () => { playerDolly.position.set(0, 0, 3.0); setQuality('low', true); });
+    renderer.xr.addEventListener('sessionstart', () => {
+      playerDolly.position.set(0, 0, 2.6); setQuality('low', true);
+      setTimeout(() => { if (renderer.xr.isPresenting && !narrating && !isBoxOpen && !isOpening) startExperience(); }, START_DELAY_MS);
+    });
     renderer.xr.addEventListener('sessionend', () => {
-      playerDolly.position.set(0, 0, 0); camera.position.set(0, 1.6, 2.9); camera.quaternion.set(0, 0, 0, 1); controls.update(); setQuality(userQuality, true);
+      playerDolly.position.set(0, 0, 0); camera.position.set(0, 1.6, 2.9); camera.quaternion.set(0, 0, 0, 1); controls.update(); setQuality(userQuality, true); endSessionCleanup();
     });
 
     const tmpDir = new THREE.Vector3(), tmpRight = new THREE.Vector3();
@@ -1149,96 +1266,313 @@
        17. LÓGICA DE ABERTURA
        ===================================================================== */
     function setSealUI(text, cls) { const el = document.getElementById('seal-status-text'); el.innerText = text; el.className = cls; }
+    const SEAL_CLS = {
+      amber: 'text-sm md:text-base font-bold text-amber-400 tracking-wider animate-pulse',
+      red: 'text-sm md:text-base font-bold text-red-400 tracking-wider',
+      green: 'text-sm md:text-base font-bold text-emerald-400 tracking-wider'
+    };
 
-    function togglePandoraBox() {
+    const NARR_RATE = 1.0;            // velocidade da voz (1.0 = normal)
+    const START_DELAY_MS = 3000;      // atraso entre entrar no VR e começar a introdução
+    const AUTO_RESET_MS = 180000;     // modo evento: volta ao estado selado após 3 min sem interação
+    let idleTimer = null;
+
+    /* ---- Legendas presas à cabeça do visitante ---- */
+    const subCanvas = document.createElement('canvas'); subCanvas.width = 1536; subCanvas.height = 384;
+    const sctx = subCanvas.getContext('2d');
+    const subTexture = new THREE.CanvasTexture(subCanvas); subTexture.encoding = THREE.sRGBEncoding; subTexture.minFilter = THREE.LinearFilter;
+    const subMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.3),
+      new THREE.MeshBasicMaterial({ map: subTexture, transparent: true, opacity: 0, depthTest: false, depthWrite: false, toneMapped: false }));
+    subMesh.position.set(0, -0.34, -1.0); subMesh.renderOrder = 999; camera.add(subMesh);
+    let subTarget = 0, subText = '', subIdx = 0;
+
+    function drawSubtitle(text, i) {
+      sctx.clearRect(0, 0, 1536, 384);
+      sctx.fillStyle = 'rgba(4,6,18,0.86)'; sctx.fillRect(0, 0, 1536, 384);
+      sctx.strokeStyle = 'rgba(245,177,58,0.75)'; sctx.lineWidth = 6; sctx.strokeRect(6, 6, 1524, 372);
+      sctx.fillStyle = '#ffffff'; sctx.textAlign = 'center';
+      const wrap = (size) => {
+        sctx.font = `600 ${size}px Rajdhani, sans-serif`;
+        const out = []; let line = '';
+        for (const wd of text.split(' ')) {
+          const t = line ? line + ' ' + wd : wd;
+          if (sctx.measureText(t).width > 1400 && line) { out.push(line); line = wd; } else line = t;
+        }
+        out.push(line); return out;
+      };
+      let size = 46, lines = wrap(size);
+      if (lines.length > 4) { size = 38; lines = wrap(size); }
+      const lh = size * 1.22, y0 = 176 - ((lines.length - 1) * lh) / 2 + size * 0.3;
+      lines.forEach((l, k) => sctx.fillText(l, 768, y0 + k * lh));
+      sctx.fillStyle = 'rgba(255,255,255,0.15)'; sctx.fillRect(60, 358, 1416, 6);
+      sctx.fillStyle = '#f5b13a'; sctx.fillRect(60, 358, 1416 * (i + 1) / NARRATION.length, 6);
+      sctx.textAlign = 'left';
+      subTexture.needsUpdate = true;
+    }
+    function showSubtitle(text, i) { subText = text; subIdx = i; drawSubtitle(text, i); subTarget = 1; }
+    function hideSubtitle() { subTarget = 0; subText = ''; }
+
+    /* ---- Narrador: arquivo narracao.mp3 (voz humana), se existir; senão síntese de voz do navegador ---- */
+    class Narrator {
+      constructor() {
+        this.token = 0; this.running = false; this.cb = null; this.cur = 0; this.voice = null; this.blocked = false;
+        this.cardToken = 0; this.u = null; this.audio = null; this.audioReady = false;
+        this.canSpeak = ('speechSynthesis' in window) && (typeof SpeechSynthesisUtterance !== 'undefined');
+        if (this.canSpeak) {
+          const load = () => { this.voice = this.pickVoice(); };
+          load();
+          try { speechSynthesis.addEventListener('voiceschanged', load); } catch (e) { speechSynthesis.onvoiceschanged = load; }
+        }
+        try {
+          const a = new Audio('narracao.mp3'); a.preload = 'auto';
+          a.addEventListener('canplaythrough', () => { this.audioReady = true; });
+          a.addEventListener('error', () => { this.audioReady = false; });
+          this.audio = a;
+        } catch (e) { /* sem áudio */ }
+      }
+      pickVoice() {
+        const vs = speechSynthesis.getVoices(); if (!vs.length) return null;
+        const br = vs.filter(v => /^pt[-_]BR/i.test(v.lang));
+        const any = br.length ? br : vs.filter(v => /^pt/i.test(v.lang));
+        if (!any.length) return null;
+        return any.find(v => /natural|neural/i.test(v.name)) || any.find(v => /google/i.test(v.name)) ||
+               any.find(v => /francisca|luciana|maria|camila|vitoria|thalita/i.test(v.name)) || any[0];
+      }
+      start(cb) {
+        this.stop(); this.cb = cb; this.running = true; this.blocked = false;
+        const tk = ++this.token;
+        if (this.audioReady && this.audio) this.playAudio(tk);
+        else if (this.canSpeak && sound.enabled) this.speakAll(tk, 0);
+        else this.speakUnit(0, tk, true);
+      }
+      stop() {
+        this.token++; this.running = false; this.cardToken++;
+        if (this.canSpeak) { try { speechSynthesis.cancel(); } catch (e) {} }
+        if (this.audio) { try { this.audio.pause(); } catch (e) {} this.audio.ontimeupdate = null; this.audio.onended = null; }
+      }
+      speakUnit(i, tk, silent) {
+        if (tk !== this.token) return;
+        if (i >= NARRATION.length) { this.running = false; if (this.cb) this.cb.onEnd(); return; }
+        this.cur = i;
+        const unit = NARRATION[i], text = unit.say || unit.show;
+        if (this.cb) this.cb.onUnit(i, unit);
+        const est = Math.max(1800, text.length * 58);
+        let advanced = false, fb = null;
+        const next = () => {
+          if (advanced || tk !== this.token) return;
+          advanced = true; clearTimeout(fb);
+          setTimeout(() => this.speakUnit(i + 1, tk), unit.pause || 600);
+        };
+        if (!this.canSpeak || !sound.enabled || silent) { fb = setTimeout(next, est); return; }
+        fb = setTimeout(next, est * 2 + 4000);
+        try {
+          const u = new SpeechSynthesisUtterance(text); this.u = u;
+          u.lang = 'pt-BR'; if (this.voice) u.voice = this.voice; u.rate = 0.95; u.pitch = 1; u.volume = 1;
+          u.onend = next;
+          u.onerror = (e) => {
+            if (tk !== this.token) return;
+            if (e && e.error === 'not-allowed') { this.blocked = true; clearTimeout(fb); fb = setTimeout(next, est); }
+            else next();
+          };
+          speechSynthesis.cancel();
+          setTimeout(() => { if (tk === this.token) speechSynthesis.speak(u); }, 60);
+        } catch (err) { fb = setTimeout(next, est); }
+      }
+      // Enfileira todos os blocos de uma vez: a fala corre sem pausas e a legenda acompanha o início de cada bloco
+      speakAll(tk, from) {
+        if (tk !== this.token) return;
+        let started = false, fell = false;
+        const fall = (i) => {
+          if (fell || tk !== this.token) return;
+          fell = true; clearTimeout(watchdog); this.blocked = true;
+          try { speechSynthesis.cancel(); } catch (e) {}
+          this.speakUnit(i, tk, true);
+        };
+        const watchdog = setTimeout(() => { if (!started) fall(from); }, 4500);
+        const chars = NARRATION.slice(from).reduce((n, u) => n + (u.say || u.show).length, 0);
+        setTimeout(() => { if (tk === this.token && this.running && !fell) { this.running = false; if (this.cb) this.cb.onEnd(); } }, chars * 85 + 12000);
+        const uts = [];
+        for (let i = from; i < NARRATION.length; i++) {
+          const unit = NARRATION[i], u = new SpeechSynthesisUtterance(unit.say || unit.show);
+          u.lang = 'pt-BR'; if (this.voice) u.voice = this.voice; u.rate = NARR_RATE; u.pitch = 1; u.volume = 1;
+          u.onstart = () => { if (tk !== this.token || fell) return; started = true; clearTimeout(watchdog); this.cur = i; if (this.cb) this.cb.onUnit(i, unit); };
+          if (i === NARRATION.length - 1) u.onend = () => { if (tk !== this.token || fell) return; this.running = false; if (this.cb) this.cb.onEnd(); };
+          u.onerror = (e) => { if (e && e.error === 'not-allowed') fall(i); };
+          uts.push(u);
+        }
+        this.uts = uts;
+        try { speechSynthesis.cancel(); } catch (e) {}
+        setTimeout(() => { if (tk === this.token && !fell) uts.forEach(u => speechSynthesis.speak(u)); }, 80);
+      }
+      playAudio(tk) {
+        const a = this.audio, total = NARRATION.reduce((n, u) => n + (u.say || u.show).length, 0);
+        const bounds = []; let acc = 0;
+        NARRATION.forEach(u => { acc += (u.say || u.show).length; bounds.push(acc / total); });
+        let shown = -1;
+        a.muted = !sound.enabled; a.currentTime = 0;
+        a.ontimeupdate = () => {
+          if (tk !== this.token || !a.duration) return;
+          const p = a.currentTime / a.duration;
+          let i = bounds.findIndex(b => p <= b); if (i < 0) i = NARRATION.length - 1;
+          if (i !== shown) { shown = i; this.cur = i; if (this.cb) this.cb.onUnit(i, NARRATION[i]); }
+        };
+        a.onended = () => { if (tk !== this.token) return; this.running = false; if (this.cb) this.cb.onEnd(); };
+        const pr = a.play();
+        if (pr && pr.catch) pr.catch(() => { this.audioReady = false; this.speakUnit(0, tk); });
+      }
+      // Se o navegador bloqueou a voz, o próximo toque do visitante a libera
+      nudge() {
+        if (this.running && this.blocked) { this.blocked = false; const tk = ++this.token; if (this.canSpeak && sound.enabled) this.speakAll(tk, this.cur); else this.speakUnit(this.cur, tk, true); }
+      }
+      speakCard(text) {
+        if (!this.canSpeak || !sound.enabled || this.running) return;
+        const tk = ++this.cardToken;
+        try { speechSynthesis.cancel(); } catch (e) {}
+        const parts = text.match(/[^.!?]+[.!?]*/g) || [text];
+        setTimeout(() => {
+          if (tk !== this.cardToken) return;
+          this.cq = parts.map(p => { const u = new SpeechSynthesisUtterance(p.trim()); u.lang = 'pt-BR'; if (this.voice) u.voice = this.voice; u.rate = NARR_RATE; return u; });
+          this.cq.forEach(u => speechSynthesis.speak(u));
+        }, 80);
+      }
+      stopCard() {
+        this.cardToken++;
+        if (this.canSpeak && !this.running) { try { speechSynthesis.cancel(); } catch (e) {} }
+      }
+    }
+    const narrator = new Narrator();
+
+    /* ---- Estados da experiência: aguardando → introdução narrada → caixa aberta → (restaurar) ---- */
+    function refreshUI() {
+      document.getElementById('btn-main-trigger').innerText = narrating ? 'Pular Introdução' : (isBoxOpen ? 'Restaurar Contenção' : 'Iniciar Experiência');
+      updateHologramCanvas(); updateHoloButtonCanvas();
+    }
+    function bumpIdle() {
+      clearTimeout(idleTimer);
+      if (isBoxOpen) idleTimer = setTimeout(() => { if (isBoxOpen && !isOpening) closeBox(); }, AUTO_RESET_MS);
+    }
+    function startExperience() {
+      if (narrating || isBoxOpen || isOpening) return;
+      sound.init(); narrating = true; sound.setLevel(0.14);
+      setSealUI('INTRODUÇÃO EM CURSO', SEAL_CLS.amber);
+      refreshUI();
+      narrator.start({
+        onUnit: (i, u) => { showSubtitle(u.show, i); if (u.opens && !isBoxOpen && !isOpening) openBox(); },
+        onEnd: () => endNarration()
+      });
+    }
+    function endNarration() {
+      if (!narrating) return;
+      narrating = false; sound.setLevel(0.5);
+      setTimeout(hideSubtitle, 1500);
+      if (!isBoxOpen && !isOpening) openBox(); else refreshUI();
+    }
+    function skipIntro() { narrator.stop(); hideSubtitle(); endNarration(); }
+    function endSessionCleanup() {
+      if (narrating) { narrator.stop(); narrating = false; sound.setLevel(0.5); hideSubtitle(); }
+      narrator.stopCard();
+      if (isBoxOpen && !isOpening) closeBox(); else refreshUI();
+    }
+    function onPrimaryAction() {
       if (isOpening) return;
       sound.init();
-      if (!isBoxOpen) {
-        isOpening = true;
-        sound.playOpenBoxSequence();
-        setSealUI('ROMPENDO SELO...', 'text-sm md:text-base font-bold text-amber-400 tracking-wider animate-pulse');
-        const startAngle = lidPivot.rotation.x, targetAngle = -MAX_LID_ANGLE, duration = 2800, startTime = performance.now();
-        function animateOpen(time) {
-          const progress = Math.min((time - startTime) / duration, 1.0), ease = 1 - Math.pow(1 - progress, 3);
-          // Pequena tremedeira antes de abrir
-          const shake = progress < 0.25 ? Math.sin(time * 0.06) * 0.004 * (1 - progress * 4) : 0;
-          boxRoot.rotation.z = shake;
-          lidPivot.rotation.x = startAngle + (targetAngle - startAngle) * smooth(0.12, 1.0, progress);
-          boxInnerLight.intensity = ease * 5.5;
-          swirlMat.uniforms.uOpen.value = ease;
-          bandMat.emissiveIntensity = 0.25 + ease * 1.6;
-          rayMat.uniforms.uI.value = 0.2 + ease * 0.15;
-          dataStreamBeam.material.opacity = ease * 0.6;
-          dataStreamBeam.material.color.setHex(progress > 0.6 ? 0x38bdf8 : 0x9333ea);
-          sealMat.color.setHex(0xef4444); sealMat.emissive.setHex(0xef4444);
-          evilMat.opacity = Math.min(progress * 1.5, 0.9);
-          camera.getWorldPosition(camWorld);
-          hologramPanels.forEach((card, idx) => {
-            const cp = Math.max(0, Math.min(1.0, (progress - idx * 0.04) / 0.6)), ce = 1 - Math.pow(1 - cp, 3);
-            card.material.opacity = ce * 0.95;
-            const s = 0.01 + ce * 0.99; card.scale.set(s, s, s);
-            const angle = card.userData.baseAngle + (1 - ce) * 3, radius = card.userData.baseRadius * ce;
-            card.position.set(Math.cos(angle) * radius, CH_Y + 0.15 + (card.userData.targetY - (CH_Y + 0.15)) * ce, Math.sin(angle) * radius);
-            card.lookAt(camWorld);
-          });
-          if (progress < 1.0) requestAnimationFrame(animateOpen);
-          else {
-            isBoxOpen = true; isOpening = false; boxRoot.rotation.z = 0;
-            setSealUI('SELO ROMPIDO // DADOS LIBERADOS', 'text-sm md:text-base font-bold text-red-400 tracking-wider');
-            document.getElementById('btn-main-trigger').innerText = 'Restaurar Contenção';
-            updateHologramCanvas(); updateHoloButtonCanvas();
-            hopeMat.opacity = 0.95; hopeOrbMat.opacity = 0.9;
-          }
-        }
-        requestAnimationFrame(animateOpen);
-      } else {
-        isOpening = true; sound.playClickSound();
-        const startAngle = lidPivot.rotation.x, targetAngle = 0, duration = 1300, startTime = performance.now();
-        function animateClose(time) {
-          const progress = Math.min((time - startTime) / duration, 1.0), ease = 1 - Math.pow(1 - progress, 2), inv = 1 - ease;
-          lidPivot.rotation.x = startAngle + (targetAngle - startAngle) * ease;
-          boxInnerLight.intensity = inv * 5.5; swirlMat.uniforms.uOpen.value = inv; bandMat.emissiveIntensity = 0.25 + inv * 1.6;
-          rayMat.uniforms.uI.value = 0.2 + inv * 0.15;
-          dataStreamBeam.material.opacity = inv * 0.6; evilMat.opacity = inv * 0.9; hopeMat.opacity = inv * 0.95; hopeOrbMat.opacity = inv * 0.9;
-          hologramPanels.forEach((card) => {
-            card.material.opacity = inv * 0.95; const s = Math.max(0.01, inv); card.scale.set(s, s, s);
-            card.position.x *= inv; card.position.z *= inv;
-            card.position.y = (CH_Y + 0.15) + (card.userData.targetY - (CH_Y + 0.15)) * inv;
-          });
-          if (progress < 1.0) requestAnimationFrame(animateClose);
-          else {
-            isBoxOpen = false; isOpening = false;
-            sealMat.color.setHex(0x10b981); sealMat.emissive.setHex(0x10b981);
-            setSealUI('SELADO // 100%', 'text-sm md:text-base font-bold text-emerald-400 tracking-wider');
-            document.getElementById('btn-main-trigger').innerText = 'Desbloquear Selo';
-            updateHologramCanvas(); updateHoloButtonCanvas();
-          }
-        }
-        requestAnimationFrame(animateClose);
-      }
+      if (narrating) skipIntro();
+      else if (isBoxOpen) closeBox();
+      else startExperience();
     }
 
+    function openBox() {
+      if (isOpening || isBoxOpen) return;
+      sound.init(); isOpening = true; sound.setLevel(narrating ? 0.32 : 0.5);
+      sound.playOpenBoxSequence();
+      setSealUI('ROMPENDO SELO...', SEAL_CLS.amber); refreshUI();
+      const startAngle = lidPivot.rotation.x, targetAngle = -MAX_LID_ANGLE, duration = 2800, startTime = performance.now();
+      function animateOpen(time) {
+        const progress = Math.min((time - startTime) / duration, 1.0), ease = 1 - Math.pow(1 - progress, 3);
+        boxRoot.rotation.z = progress < 0.25 ? Math.sin(time * 0.06) * 0.004 * (1 - progress * 4) : 0;
+        lidPivot.rotation.x = startAngle + (targetAngle - startAngle) * smooth(0.12, 1.0, progress);
+        boxInnerLight.intensity = ease * 5.5;
+        swirlMat.uniforms.uOpen.value = ease;
+        bandMat.emissiveIntensity = 0.25 + ease * 1.6;
+        rayMat.uniforms.uI.value = 0.2 + ease * 0.15;
+        dataStreamBeam.material.opacity = ease * 0.6;
+        dataStreamBeam.material.color.setHex(progress > 0.6 ? 0x38bdf8 : 0x9333ea);
+        sealMat.color.setHex(0xef4444); sealMat.emissive.setHex(0xef4444);
+        evilMat.opacity = Math.min(progress * 1.5, 0.9);
+        setLinkLevel(smooth(0.35, 1.0, progress));
+        hologramPanels.forEach((card, idx) => {
+          const cp = Math.max(0, Math.min(1.0, (progress - idx * 0.05) / 0.6)), ce = 1 - Math.pow(1 - cp, 3);
+          card.material.opacity = ce * 0.97;
+          card.scale.setScalar(0.01 + ce * 0.99);
+          card.position.lerpVectors(BOX_ANCHOR, card.userData.home, ce);
+          card.lookAt(camWorld);
+        });
+        if (progress < 1.0) requestAnimationFrame(animateOpen);
+        else {
+          isBoxOpen = true; isOpening = false; boxRoot.rotation.z = 0;
+          setSealUI('SELO ROMPIDO // DADOS LIBERADOS', SEAL_CLS.red);
+          hopeMat.opacity = 0.95; hopeOrbMat.opacity = 0.9;
+          bumpIdle(); refreshUI();
+        }
+      }
+      requestAnimationFrame(animateOpen);
+    }
+
+    function closeBox() {
+      if (isOpening || !isBoxOpen) return;
+      isOpening = true; sound.playClickSound(); clearTimeout(idleTimer);
+      unfocusAll();
+      const startAngle = lidPivot.rotation.x, targetAngle = 0, duration = 1300, startTime = performance.now();
+      function animateClose(time) {
+        const progress = Math.min((time - startTime) / duration, 1.0), ease = 1 - Math.pow(1 - progress, 2), inv = 1 - ease;
+        lidPivot.rotation.x = startAngle + (targetAngle - startAngle) * ease;
+        boxInnerLight.intensity = inv * 5.5; swirlMat.uniforms.uOpen.value = inv; bandMat.emissiveIntensity = 0.25 + inv * 1.6;
+        rayMat.uniforms.uI.value = 0.2 + inv * 0.15;
+        dataStreamBeam.material.opacity = inv * 0.6; evilMat.opacity = inv * 0.9; hopeMat.opacity = inv * 0.95; hopeOrbMat.opacity = inv * 0.9;
+        setLinkLevel(inv);
+        hologramPanels.forEach((card) => {
+          card.material.opacity = inv * 0.97; card.scale.setScalar(Math.max(0.01, inv));
+          card.position.lerpVectors(BOX_ANCHOR, card.userData.home, inv);
+        });
+        if (progress < 1.0) requestAnimationFrame(animateClose);
+        else {
+          isBoxOpen = false; isOpening = false;
+          sealMat.color.setHex(0x10b981); sealMat.emissive.setHex(0x10b981);
+          setSealUI('SELADO // 100%', SEAL_CLS.green);
+          refreshUI();
+        }
+      }
+      requestAnimationFrame(animateClose);
+    }
+
+    /* ---- Interação com cartões: toque para ler de perto (e ouvir); toque de novo ou Esc para devolver ---- */
+    function unfocusAll() { hologramPanels.forEach(c => { c.userData.focused = false; }); narrator.stopCard(); }
+    function toggleFocus(card) {
+      const was = card.userData.focused;
+      hologramPanels.forEach(c => { c.userData.focused = false; });
+      if (!was) {
+        card.userData.focused = true;
+        if (!narrating) narrator.speakCard(card.userData.data.say);
+      } else narrator.stopCard();
+      bumpIdle();
+    }
     function handleInteraction(obj) {
-      if (obj.userData.isChest || obj.userData.isActionButton) { togglePandoraBox(); return; }
-      if (obj.userData.isInfoCard) {
-        const info = obj.userData.data, modal = document.getElementById('info-modal');
-        const mTitle = document.getElementById('modal-title'), mDesc = document.getElementById('modal-desc');
-        if (mTitle && mDesc && modal) {
-          mTitle.innerText = `${info.icon} ${info.title} (${info.code})`; mTitle.style.color = info.color;
-          mDesc.innerHTML = `
-            <div class="mb-3 text-xs uppercase font-bold tracking-wider" style="color:${info.color}">
-              Nível de Risco Sistêmico: <span class="text-white bg-white/10 px-2 py-0.5 rounded">${info.risk}</span>
-            </div>
-            <p class="text-sm text-gray-200 leading-relaxed">${info.text}</p>
-            <div class="mt-4 pt-3 border-t border-white/10 text-xs text-amber-300">⚡ Arquivo decodificado em tempo real a partir do núcleo da Caixa de Pandora.</div>`;
-          modal.classList.remove('hidden');
-        }
-        obj.scale.multiplyScalar(1.25);
-        setTimeout(() => { if (isBoxOpen) obj.scale.set(1, 1, 1); }, 350);
-      }
+      if (obj.userData.isActionButton) { onPrimaryAction(); return; }
+      if (obj.userData.isChest) { if (!narrating) onPrimaryAction(); return; }
+      if (obj.userData.isInfoCard && isBoxOpen && !isOpening) toggleFocus(obj);
     }
+    function handlePick(hits) {
+      narrator.nudge();
+      if (hits.length > 0) { sound.playClickSound(); handleInteraction(hits[0].object); }
+      else if (isBoxOpen) unfocusAll();
+    }
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') unfocusAll(); });
 
-    document.getElementById('modal-close-btn').addEventListener('click', () => document.getElementById('info-modal').classList.add('hidden'));
+    function redrawAllText() {
+      updateHologramCanvas(); updateHoloButtonCanvas();
+      hologramPanels.forEach(p => { p.material.map.dispose(); p.material.map = createCardTexture(p.userData.data); p.material.needsUpdate = true; });
+      if (subText) drawSubtitle(subText, subIdx);
+    }
 
     const mouse = new THREE.Vector2();
     window.addEventListener('pointerdown', (e) => {
@@ -1246,20 +1580,20 @@
       mouse.x = (e.clientX / window.innerWidth) * 2 - 1; mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
       raycaster.setFromCamera(mouse, camera);
       const hits = raycaster.intersectObjects(interactiveObjects, true);
-      if (hits.length > 0) { sound.playClickSound(); handleInteraction(hits[0].object); }
+      handlePick(hits);
     });
 
-    setInterval(() => { if (!isOpening) { activeTechIndex = (activeTechIndex + 1) % TECH_DATA.length; updateHologramCanvas(); } }, 7000);
 
     /* =====================================================================
        18. HUD 2D + QUALIDADE
        ===================================================================== */
-    document.getElementById('btn-main-trigger').addEventListener('click', togglePandoraBox);
+    document.getElementById('btn-main-trigger').addEventListener('click', onPrimaryAction);
 
     const btnAudio = document.getElementById('btn-audio-toggle'), audioLabel = document.getElementById('audio-label');
     btnAudio.addEventListener('click', () => {
       sound.init();
       const on = sound.toggle();
+      if (!on && 'speechSynthesis' in window) { try { speechSynthesis.cancel(); } catch (e) {} }
       audioLabel.innerText = on ? 'Áudio: Ativo' : 'Áudio: Mudo';
       btnAudio.className = on
         ? 'bg-gray-900/80 hover:bg-gray-800 text-amber-300 border border-amber-500/40 px-3.5 py-2 rounded-xl text-xs font-semibold backdrop-blur transition-all flex items-center gap-2'
@@ -1357,18 +1691,36 @@
         hopeGeo.attributes.position.needsUpdate = true;
       }
 
-      // Cartões orbitais
+      // Cartões: flutuação, foco (leitura de perto) e pulsos de energia nas conexões
       if (isBoxOpen && !isOpening) {
+        camera.getWorldDirection(tmpDir);
+        focusPos.copy(camWorld).addScaledVector(tmpDir, 1.55); focusPos.y -= 0.04;
+        const kk = 1 - Math.exp(-6 * delta);
         hologramPanels.forEach((card) => {
-          const ud = card.userData; ud.baseAngle += ud.speed * delta * 0.4;
-          card.position.set(Math.cos(ud.baseAngle) * ud.baseRadius, ud.targetY + Math.sin(elapsed * 2.0 + ud.index) * 0.05, Math.sin(ud.baseAngle) * ud.baseRadius);
+          const ud = card.userData;
+          if (ud.focused) {
+            card.position.lerp(focusPos, kk);
+            card.scale.setScalar(card.scale.x + (0.9 - card.scale.x) * kk);
+          } else {
+            tmpHome.copy(ud.home); tmpHome.y += Math.sin(elapsed * 1.3 + ud.phase) * 0.04;
+            card.position.lerp(tmpHome, kk);
+            card.scale.setScalar(card.scale.x + (1 - card.scale.x) * kk);
+          }
           card.lookAt(camWorld);
         });
         dataStreamBeam.rotation.y += delta * 1.5;
       }
+      if (linkLevel > 0.01) {
+        pulses.forEach(p => {
+          p.t += p.speed * delta; if (p.t > 1) p.t -= 1;
+          p.curve.getPoint(p.t, p.sprite.position);
+          p.sprite.material.opacity = linkLevel * Math.sin(p.t * Math.PI);
+        });
+      }
+      subMesh.material.opacity += (subTarget - subMesh.material.opacity) * Math.min(1, delta * 6);
 
-      holoBoard.position.y = 1.65 + Math.sin(elapsed * 1.8) * 0.03;
-      vrHoloButton.position.y = 0.92 + Math.sin(elapsed * 1.8) * 0.03;
+      holoBoard.position.y = 1.55 + Math.sin(elapsed * 1.8) * 0.03;
+      vrHoloButton.position.y = 0.82 + Math.sin(elapsed * 1.8) * 0.03;
 
       renderer.render(scene, camera);
     }
@@ -1382,7 +1734,7 @@
     // Redesenhar texturas de texto quando as fontes web terminarem de carregar
     document.fonts.ready.then(() => {
       updateHologramCanvas(); updateHoloButtonCanvas();
-      hologramPanels.forEach(p => { p.material.map.dispose(); p.material.map = createInfoHoloTexture(p.userData.data); p.material.needsUpdate = true; });
+      redrawAllText();
     });
 
     const loading = document.getElementById('loading');
