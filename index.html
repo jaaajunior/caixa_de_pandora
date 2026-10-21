@@ -58,7 +58,7 @@
 
     <footer class="flex flex-col md:flex-row justify-between items-end gap-3 pb-16 md:pb-2">
       <div class="pointer-events-auto bg-black/60 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 text-xs text-gray-300 max-w-sm">
-        <p><span class="text-amber-400 font-bold">Experiência:</span> clique em <strong>Iniciar Experiência</strong> para ouvir a introdução; a Caixa se abre ao final. Clique nos cartões para lê-los de perto (Esc volta). No <strong>Meta Quest 2</strong>, aperte <strong>"ENTRAR NO VR"</strong>: a introdução começa sozinha após 3 segundos. Gatilho seleciona; analógico esquerdo caminha.</p>
+        <p><span class="text-amber-400 font-bold">Experiência:</span> clique em <strong>Iniciar Experiência</strong> para ouvir as boas-vindas; a Caixa se abre e libera <strong>9 tópicos</strong> ao redor dela. Clique num tópico para abrir o painel de leitura (ouvir, anterior, próximo, fechar). No <strong>Meta Quest 2</strong>, aperte <strong>"ENTRAR NO VR"</strong>: as boas-vindas começam sozinhas após 3 segundos. Gatilho seleciona; analógico esquerdo caminha.</p>
       </div>
       <div class="pointer-events-auto flex items-center gap-3">
         <button id="btn-quality" class="bg-gray-900/80 hover:bg-gray-800 text-sky-300 border border-sky-500/40 px-3.5 py-2 rounded-xl text-xs font-semibold backdrop-blur transition-all">
@@ -224,14 +224,10 @@
        ===================================================================== */
     // Introdução narrada. "show" = legenda; "say" = texto falado (com ajuste de pronúncia).
     const NARRATION = [
-      { show: 'Em tempos de redes sociais... A linguagem simples e acessível aproxima as pessoas.', pause: 250 },
-      { show: 'Indignação dá mais visualização que testemunho. Raiva circula mais depressa que explicação — hate bait.', say: 'Indignação dá mais visualização que testemunho. Raiva circula mais depressa que explicação. Hêit bêit.', pause: 250 },
-      { show: 'Na perspectiva da Psicologia, o hate bait pode explorar vieses cognitivos, identidade grupal, emoções negativas e a necessidade de defender as próprias crenças.', say: 'Na perspectiva da Psicologia, o hêit bêit pode explorar vieses cognitivos, identidade grupal, emoções negativas e a necessidade de defender as próprias crenças.', pause: 200 },
-      { show: 'Em resumo: é uma estratégia de manipulação da atenção que transforma emoções negativas em engajamento digital.', pause: 300 },
-      { show: 'O algoritmo funciona com o aumento de engajamento para aumentar o alcance. Por isso, um algoritmo pode identificar padrões de comportamento, analisar preferências e estimar a probabilidade de uma pessoa realizar determinada ação.', pause: 250 },
-      { show: 'Entretanto, identificar um padrão não é o mesmo que compreender o significado que aquela experiência tem para a pessoa, principalmente em um contexto social com implicações e questões éticas.', pause: 300 },
-      { show: 'A Caixa de Pandora simboliza a abertura do encontro entre a essência humana e a IA. A consciência humana representa a possibilidade de reconhecer nossas experiências e refletir sobre como agimos com autonomia. Afinal, quem está no controle?',
-        say: 'A Caixa de Pandora simboliza a abertura do encontro entre a essência humana e a I A. A consciência humana representa a possibilidade de reconhecer nossas experiências e refletir sobre como agimos com autonomia. Afinal, quem está no controle?', opens: true, pause: 300 }
+      { show: 'Bem-vindo, bem-vinda. Você está prestes a abrir a caixa de Pandora.', pause: 350 },
+      { show: 'Ao abrir, a essência humana e as novas tecnologias se encontram. Tristeza, medo, desejo, desconfiança, preconceito, influência. Cada escolha, cada emoção deixa um rastro.', opens: true, pause: 300 },
+      { show: 'Algoritmos observam, comparam e predizem padrões de comportamento. Mas, por trás dos dados, existem pessoas, histórias e contextos.', pause: 300 },
+      { show: 'Da caixa de Pandora também emerge a esperança, a possibilidade de escolhas mais conscientes. Compreender o comportamento humano é construir tecnologia a serviço de uma sociedade mais ética, justa e humana.', pause: 300 }
     ];
 
     const SOURCES = [
@@ -243,41 +239,55 @@
       'TIC Kids Online Brasil 2024, realizada pelo Cetic.br, ligado ao Núcleo de Informação e Coordenação do Ponto BR (NIC.br).'
     ];
 
-    // Cartões que saem da Caixa (ordem = posição no layout)
-    const CARDS = [
-      { group: 'tema', tag: '1 / 4', title: 'Consequências emocionais', color: '#f5b13a',
-        body: 'Sistemas que recomendam conteúdos com base no comportamento anterior podem aumentar a exposição repetida a temas que despertam medo, raiva, tristeza ou comparação social.',
-        risk: 'Sobrecarga emocional, sofrimento psicológico e dificuldade de interromper padrões de consumo prejudiciais. Os efeitos dependem do conteúdo e da pessoa.' },
-      { group: 'tema', tag: '2 / 4', title: 'Autonomia e liberdade de escolha', color: '#f5b13a',
-        body: 'Recomendações personalizadas podem facilitar decisões, mas também direcionar a atenção para determinados produtos, opiniões ou conteúdos sem que o usuário perceba claramente essa influência.',
-        risk: 'Confundir uma preferência pessoal com uma preferência reforçada pelo ambiente digital.' },
-      { group: 'tema', tag: '3 / 4', title: 'Privacidade e inferências sobre a pessoa', color: '#f5b13a',
-        body: 'Sistemas de IA podem utilizar grandes volumes de dados para inferir características, preferências e padrões pessoais. Isso levanta questões sobre consentimento, controle dos dados e usos que o indivíduo não esperava.',
-        risk: 'Perda de controle sobre informações pessoais e utilização indevida de inferências comportamentais.' },
-      { group: 'tema', tag: '4 / 4', title: 'Discriminação e desigualdade', color: '#f5b13a',
-        body: 'Algoritmos podem reproduzir ou ampliar vieses presentes nos dados e nos critérios usados para desenvolvê-los, afetando decisões em áreas como educação, trabalho e acesso a serviços.',
-        risk: 'Avaliações injustas e reprodução de desigualdades sociais. A UNESCO recomenda transparência, equidade e supervisão humana.' },
-      { group: 'conceito', tag: 'REDES SOCIAIS', title: 'Hate bait', color: '#c084fc',
-        paras: ['Indignação dá mais visualização que testemunho. Raiva circula mais depressa que explicação.',
-                'Na perspectiva da Psicologia, o hate bait pode explorar vieses cognitivos, identidade grupal, emoções negativas e a necessidade de defender as próprias crenças.',
-                'Em resumo: é uma estratégia de manipulação da atenção que transforma emoções negativas em engajamento digital.'] },
-      { group: 'conceito', tag: 'ALGORITMOS', title: 'O algoritmo', color: '#c084fc',
-        paras: ['O algoritmo funciona com o aumento de engajamento para aumentar o alcance.',
-                'Por isso, um algoritmo pode identificar padrões de comportamento, analisar preferências e estimar a probabilidade de uma pessoa realizar determinada ação.',
-                'Entretanto, identificar um padrão não é o mesmo que compreender o significado que aquela experiência tem para a pessoa, principalmente em um contexto social com implicações e questões éticas.'] },
-      { group: 'dados', tag: 'DADOS', color: '#38bdf8',
-        stats: [{ big: '83%', body: 'dos usuários de 9 a 17 anos têm presença nas plataformas digitais.' },
-                { big: '41%', body: 'dos usuários de 11 a 17 anos usam a Internet como fonte de apoio à saúde, embora a qualidade do conteúdo e a confiabilidade das fontes precisem ser avaliadas.' },
-                { big: '63%', body: 'dos usuários que acessaram o Instagram semanalmente' }] },
-      { group: 'regulacao', tag: 'INICIATIVA', title: 'My Feed, My Way', subtitle: '“Meu Feed, Meu Jeito”', color: '#4ade80',
-        body: 'A iniciativa foi anunciada pelo governo australiano em setembro de 2026 e propõe dar aos usuários maior controle sobre os algoritmos que organizam o conteúdo das redes sociais. A regulamentação está em consulta pública.' }
+    // Os 9 tópicos (painéis) que o convidado acessa. k: lead | p | q | hl | ask | risk | stat
+    const PANELS = [
+      { num: 1, tag: 'INTRODUÇÃO', title: 'Boas-vindas', color: '#f5b13a', blocks: [
+        { k: 'lead', t: 'Bem-vindo, bem-vinda. Você está prestes a abrir a caixa de Pandora.' },
+        { k: 'p', t: 'Ao abrir, a essência humana e as novas tecnologias se encontram. Tristeza, medo, desejo, desconfiança, preconceito, influência.' },
+        { k: 'p', t: 'Cada escolha, cada emoção deixa um rastro.' },
+        { k: 'p', t: 'Algoritmos observam, comparam e predizem padrões de comportamento. Mas, por trás dos dados, existem pessoas, histórias e contextos.' },
+        { k: 'hl', t: 'Da caixa de Pandora também emerge a esperança, a possibilidade de escolhas mais conscientes. Compreender o comportamento humano é construir tecnologia a serviço de uma sociedade mais ética, justa e humana.' } ] },
+      { num: 2, tag: 'O SÍMBOLO', title: 'A Caixa de Pandora', color: '#f5b13a', blocks: [
+        { k: 'p', t: 'A Caixa de Pandora simboliza a abertura do encontro entre a essência humana e a IA.' },
+        { k: 'p', t: 'A consciência humana representa a possibilidade de reconhecer nossas experiências e refletir sobre como agimos com autonomia.' },
+        { k: 'ask', t: 'Afinal, quem está no controle?' } ] },
+      { num: 3, tag: 'CONTEXTO', title: 'Em tempos de redes sociais...', color: '#c084fc', blocks: [
+        { k: 'q', t: 'A linguagem simples e acessível aproxima as pessoas.' },
+        { k: 'q', t: 'Indignação dá mais visualização que testemunho.' },
+        { k: 'q', t: 'Raiva circula mais depressa que explicação – hate bait' },
+        { k: 'p', t: 'Na perspectiva da Psicologia, o hate bait pode explorar vieses cognitivos, identidade grupal, emoções negativas e a necessidade de defender as próprias crenças.' },
+        { k: 'hl', t: 'Em resumo: é uma estratégia de manipulação da atenção que transforma emoções negativas em engajamento digital.' },
+        { k: 'p', t: 'O algoritmo funciona com o aumento de engajamento para aumentar o alcance. Por isso, um algoritmo pode identificar padrões de comportamento, analisar preferências e estimar a probabilidade de uma pessoa realizar determinada ação. Entretanto, identificar um padrão não é o mesmo que compreender o significado que aquela experiência tem para a pessoa, principalmente em um contexto social com implicações e questões éticas.' } ] },
+      { num: 4, tag: 'RISCO', title: 'Consequências emocionais', color: '#fb7185', blocks: [
+        { k: 'p', t: 'Sistemas que recomendam conteúdos com base no comportamento anterior podem aumentar a exposição repetida a temas que despertam medo, raiva, tristeza ou comparação social.' },
+        { k: 'risk', t: 'Sobrecarga emocional, sofrimento psicológico e dificuldade de interromper padrões de consumo prejudiciais. Os efeitos dependem do conteúdo e da pessoa.' } ] },
+      { num: 5, tag: 'RISCO', title: 'Autonomia e liberdade de escolha', color: '#fb7185', blocks: [
+        { k: 'p', t: 'Recomendações personalizadas podem facilitar decisões, mas também direcionar a atenção para determinados produtos, opiniões ou conteúdos sem que o usuário perceba claramente essa influência.' },
+        { k: 'risk', t: 'Confundir uma preferência pessoal com uma preferência reforçada pelo ambiente digital.' } ] },
+      { num: 6, tag: 'RISCO', title: 'Privacidade e inferências sobre a pessoa', color: '#fb7185', blocks: [
+        { k: 'p', t: 'Sistemas de IA podem utilizar grandes volumes de dados para inferir características, preferências e padrões pessoais. Isso levanta questões sobre consentimento, controle dos dados e usos que o indivíduo não esperava.' },
+        { k: 'risk', t: 'Perda de controle sobre informações pessoais e utilização indevida de inferências comportamentais.' } ] },
+      { num: 7, tag: 'RISCO', title: 'Discriminação e desigualdade', color: '#fb7185', blocks: [
+        { k: 'p', t: 'Algoritmos podem reproduzir ou ampliar vieses presentes nos dados e nos critérios usados para desenvolvê-los, afetando decisões em áreas como educação, trabalho e acesso a serviços.' },
+        { k: 'risk', t: 'Avaliações injustas e reprodução de desigualdades sociais. A UNESCO recomenda transparência, equidade e supervisão humana.' } ] },
+      { num: 8, tag: 'DADOS', title: 'Dados', color: '#38bdf8', blocks: [
+        { k: 'stat', big: '83%', t: 'dos usuários de 9 a 17 anos têm presença nas plataformas digitais.' },
+        { k: 'stat', big: '41%', t: 'dos usuários de 11 a 17 anos usam a Internet como fonte de apoio à saúde, embora a qualidade do conteúdo e a confiabilidade das fontes precisem ser avaliadas.' },
+        { k: 'stat', big: '63%', t: 'dos usuários acessaram o Instagram semanalmente.' } ] },
+      { num: 9, tag: 'INICIATIVA', title: 'My Feed, My Way', subtitle: '“Meu Feed, Meu Jeito”', color: '#4ade80', blocks: [
+        { k: 'p', t: 'A iniciativa foi anunciada pelo governo australiano em setembro de 2026 e propõe dar aos usuários maior controle sobre os algoritmos que organizam o conteúdo das redes sociais. A regulamentação está em consulta pública.' } ] }
     ];
-    CARDS.forEach(c => {
-      if (c.group === 'tema') c.say = `${c.title}. ${c.body} Risco: ${c.risk}`;
-      else if (c.group === 'conceito') c.say = `${c.title}. ${c.paras.join(' ')}`.replace('hate bait', 'hêit bêit').replace('Hate bait', 'Hêit bêit');
-      else if (c.group === 'dados') c.say = c.stats.map(x => `${x.big} ${x.body}`).join(' ');
-      else c.say = `My Feed, My Way. Meu Feed, Meu Jeito. ${c.body}`;
-    });
+    // Texto falado de cada painel (ajustes de pronúncia só na fala; a tela mostra o texto original)
+    (function () {
+      const end = (t) => /[.!?…]$/.test(t) ? t : t + '.';
+      const tts = (t) => t.replace(/hate bait/gi, 'hêit bêit').replace(/\bIA\b/g, 'I A').replace(/My Feed, My Way/g, 'Mai Fíd, Mai Uêi').replace(/Meu Feed, Meu Jeito/g, 'Meu Fíd, Meu Jeito');
+      PANELS.forEach(p => {
+        const parts = [end(p.title.replace(/\.\.\.$/, ''))];
+        if (p.subtitle) parts.push(end(p.subtitle.replace(/[“”]/g, '')));
+        p.blocks.forEach(b => parts.push(b.k === 'stat' ? `${b.big} ${b.t}` : (b.k === 'risk' ? 'Risco: ' + end(b.t) : end(b.t))));
+        p.say = tts(parts.join(' '));
+      });
+    })();
 
     /* =====================================================================
        3. UTILITÁRIOS PROCEDURAIS (ruído tileável + gerador de texturas PBR)
@@ -635,14 +645,14 @@
     /* =====================================================================
        8. CENÁRIO: PLATAFORMA, DEGRAUS, TERRENO
        ===================================================================== */
-    const floorMat = new THREE.MeshStandardMaterial({ map: floorMaps.map, bumpMap: floorMaps.bump, bumpScale: 1.2, roughness: 0.32, metalness: 0.25, envMapIntensity: 0.9 });
-    const stoneMat = new THREE.MeshStandardMaterial({ map: stoneMaps.map, bumpMap: stoneMaps.bump, bumpScale: 3.0, roughness: 0.88, metalness: 0.0, envMapIntensity: 0.25 });
+    const floorMat = new THREE.MeshStandardMaterial({ map: floorMaps.map, bumpMap: floorMaps.bump, bumpScale: 0.3, roughness: 0.32, metalness: 0.25, envMapIntensity: 0.9 });
+    const stoneMat = new THREE.MeshStandardMaterial({ map: stoneMaps.map, bumpMap: stoneMaps.bump, bumpScale: 0.6, roughness: 0.88, metalness: 0.0, envMapIntensity: 0.25 });
     const stoneMatSteps = stoneMat.clone();
-    const bronzeMat = new THREE.MeshStandardMaterial({ map: bronzeMaps.map, bumpMap: bronzeMaps.bump, bumpScale: 1.6, color: 0xffffff, metalness: 0.92, roughness: 0.42, envMapIntensity: 1.25 });
-    const woodMat = new THREE.MeshStandardMaterial({ map: woodMaps.map, bumpMap: woodMaps.bump, bumpScale: 2.0, metalness: 0.05, roughness: 0.6, envMapIntensity: 0.5 });
+    const bronzeMat = new THREE.MeshStandardMaterial({ map: bronzeMaps.map, bumpMap: bronzeMaps.bump, bumpScale: 0.45, color: 0xffffff, metalness: 0.92, roughness: 0.42, envMapIntensity: 1.25 });
+    const woodMat = new THREE.MeshStandardMaterial({ map: woodMaps.map, bumpMap: woodMaps.bump, bumpScale: 0.5, metalness: 0.05, roughness: 0.6, envMapIntensity: 0.5 });
 
     // Terreno distante
-    const groundMat = new THREE.MeshStandardMaterial({ map: groundMaps.map, bumpMap: groundMaps.bump, bumpScale: 2, roughness: 1, metalness: 0 });
+    const groundMat = new THREE.MeshStandardMaterial({ map: groundMaps.map, bumpMap: groundMaps.bump, bumpScale: 0.5, roughness: 1, metalness: 0 });
     const ground = new THREE.Mesh(new THREE.CircleGeometry(140, 64), groundMat);
     ground.rotation.x = -Math.PI / 2; ground.position.y = -0.55; ground.receiveShadow = true;
     scene.add(ground);
@@ -650,11 +660,11 @@
     // Plataforma principal (topo em y = 0)
     const platTop = new THREE.Mesh(new THREE.CircleGeometry(9.2, 96), floorMat);
     platTop.rotation.x = -Math.PI / 2; platTop.receiveShadow = true; scene.add(platTop);
-    const platSide = new THREE.Mesh(new THREE.CylinderGeometry(9.2, 9.2, 0.5, 96, 1, true), stoneMat);
+    const platSide = new THREE.Mesh(worldUV(new THREE.CylinderGeometry(9.2, 9.2, 0.5, 96, 1, true)), stoneMat);
     platSide.position.y = -0.25; platSide.receiveShadow = true; scene.add(platSide);
-    const step1 = new THREE.Mesh(new THREE.CylinderGeometry(9.9, 9.9, 0.5, 96), stoneMatSteps);
+    const step1 = new THREE.Mesh(worldUV(new THREE.CylinderGeometry(9.9, 9.9, 0.5, 96)), stoneMatSteps);
     step1.position.y = -0.4; step1.receiveShadow = true; step1.castShadow = true; scene.add(step1);
-    const step2 = new THREE.Mesh(new THREE.CylinderGeometry(10.7, 10.7, 0.5, 96), stoneMatSteps);
+    const step2 = new THREE.Mesh(worldUV(new THREE.CylinderGeometry(10.7, 10.7, 0.5, 96)), stoneMatSteps);
     step2.position.y = -0.55; step2.receiveShadow = true; scene.add(step2);
     // Tampos dos degraus com o mármore (leve) para ter continuidade
     // (as cápsulas de step* já cobrem; só garante que step1 fique abaixo do piso)
@@ -709,7 +719,27 @@
       g.computeVertexNormals();
       return g;
     }
+    // Escala as coordenadas UV pelo tamanho real de cada face, para a textura de pedra ter a mesma densidade em tudo
+    // (sem isso, peças baixas e largas, como o altar e os degraus, ficavam com a textura esticada em faixas).
+    function worldUV(geo) {
+      const T = 4.5, uv = geo.attributes.uv, nrm = geo.attributes.normal, p = geo.parameters || {};
+      if (geo.type === 'BoxGeometry') {
+        for (let i = 0; i < uv.count; i++) {
+          const ax = Math.abs(nrm.getX(i)), ay = Math.abs(nrm.getY(i));
+          const a = ax > 0.5 ? p.depth : (ay > 0.5 ? p.width : p.width), b = ax > 0.5 ? p.height : (ay > 0.5 ? p.depth : p.height);
+          uv.setXY(i, uv.getX(i) * a / T, uv.getY(i) * b / T);
+        }
+      } else if (geo.type === 'CylinderGeometry') {
+        const rM = Math.max(p.radiusTop, p.radiusBottom), nu = Math.max(1, Math.round(2 * Math.PI * rM / T * 3)) / 3;
+        for (let i = 0; i < uv.count; i++) {
+          if (Math.abs(nrm.getY(i)) > 0.7) uv.setXY(i, uv.getX(i) * 2 * rM / T, uv.getY(i) * 2 * rM / T);
+          else uv.setXY(i, uv.getX(i) * nu, uv.getY(i) * p.height / T);
+        }
+      }
+      uv.needsUpdate = true; return geo;
+    }
     function addMesh(geo, mat, x, y, z, parent = scene, cast = true, receive = true) {
+      if (mat === stoneMat) worldUV(geo);
       const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = cast; m.receiveShadow = receive; parent.add(m); return m;
     }
 
@@ -774,7 +804,7 @@
 
     // Rochas ao redor
     (function () {
-      const rockMat = new THREE.MeshStandardMaterial({ map: stoneMaps.map, bumpMap: stoneMaps.bump, bumpScale: 4, color: 0x6a6a78, roughness: 1 });
+      const rockMat = new THREE.MeshStandardMaterial({ map: stoneMaps.map, bumpMap: stoneMaps.bump, bumpScale: 0.9, color: 0x6a6a78, roughness: 1 });
       for (let i = 0; i < 46; i++) {
         const g = new THREE.DodecahedronGeometry(1, 1), p = g.attributes.position;
         for (let k = 0; k < p.count; k++) { const s = 0.75 + Math.random() * 0.5; p.setXYZ(k, p.getX(k) * s, p.getY(k) * s, p.getZ(k) * s); }
@@ -898,7 +928,7 @@
 
     // Material das faixas com meandro grego (relevo + emissivo)
     const bandMat = new THREE.MeshStandardMaterial({
-      map: keyColorTex, bumpMap: keyBumpTex, bumpScale: 2.0,
+      map: keyColorTex, bumpMap: keyBumpTex, bumpScale: 0.8,
       emissiveMap: keyEmissiveTex, emissive: 0xffffff, emissiveIntensity: 0.25,
       metalness: 0.85, roughness: 0.4, envMapIntensity: 1.2
     });
@@ -1047,71 +1077,152 @@
       return y + lh;
     }
 
-    function createCardTexture(c) {
-      const W = 1024, H = 704;
-      const cvs = document.createElement('canvas'); cvs.width = W; cvs.height = H;
-      const ctx = cvs.getContext('2d');
-      const bg = ctx.createLinearGradient(0, 0, 0, H);
-      bg.addColorStop(0, 'rgba(10,14,34,0.97)'); bg.addColorStop(1, 'rgba(4,6,18,0.97)');
-      ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-      ctx.strokeStyle = c.color; ctx.lineWidth = 8; ctx.strokeRect(12, 12, W - 24, H - 24);
-      ctx.fillStyle = c.color; ctx.fillRect(12, 12, W - 24, 16);
-      ctx.textAlign = 'left';
-      ctx.font = 'bold 28px Rajdhani, sans-serif'; ctx.fillStyle = c.color; ctx.fillText(c.tag, 40, 74);
-      let y;
-      if (c.group === 'tema') {
-        ctx.fillStyle = '#ffffff'; ctx.font = 'bold 52px Rajdhani, sans-serif';
-        y = wrapY(ctx, c.title, 40, 140, 940, 56);
-        ctx.fillStyle = '#cbd5e1'; ctx.font = '33px Rajdhani, sans-serif';
-        y = wrapY(ctx, c.body, 40, y + 12, 944, 43);
-        ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(40, y + 2); ctx.lineTo(W - 40, y + 2); ctx.stroke();
-        ctx.fillStyle = '#f87171'; ctx.font = 'bold 28px Rajdhani, sans-serif'; ctx.fillText('RISCO', 40, y + 40);
-        ctx.fillStyle = '#fecaca'; ctx.font = '31px Rajdhani, sans-serif';
-        wrapY(ctx, c.risk, 40, y + 78, 944, 40);
-      } else if (c.group === 'conceito') {
-        ctx.fillStyle = '#ffffff'; ctx.font = 'bold 60px Rajdhani, sans-serif'; ctx.fillText(c.title, 40, 140);
-        ctx.fillStyle = '#e2e8f0'; ctx.font = '31px Rajdhani, sans-serif';
-        y = 196;
-        c.paras.forEach((p, k) => {
-          ctx.fillStyle = k === c.paras.length - 1 ? '#fde68a' : '#e2e8f0';
-          y = wrapY(ctx, p, 40, y, 944, 41) + 14;
-        });
-      } else if (c.group === 'dados') {
-        c.stats.forEach((st, k) => {
-          const y0 = 100 + k * 196;
-          if (k > 0) { ctx.strokeStyle = 'rgba(255,255,255,0.16)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(40, y0 - 10); ctx.lineTo(W - 40, y0 - 10); ctx.stroke(); }
-          ctx.fillStyle = c.color; ctx.font = 'bold 118px Cinzel, serif'; ctx.fillText(st.big, 36, y0 + 118);
-          ctx.fillStyle = '#e2e8f0'; ctx.font = '29px Rajdhani, sans-serif';
-          wrapY(ctx, st.body, 340, y0 + 52, 650, 37);
-        });
-      } else {
-        ctx.fillStyle = '#ffffff'; ctx.font = 'bold 66px Rajdhani, sans-serif'; ctx.fillText(c.title, 40, 160);
-        ctx.fillStyle = c.color; ctx.font = 'italic 40px Rajdhani, sans-serif'; ctx.fillText(c.subtitle, 40, 216);
-        ctx.fillStyle = '#cbd5e1'; ctx.font = '36px Rajdhani, sans-serif';
-        wrapY(ctx, c.body, 40, 296, 944, 48);
+    function wrapLines(ctx, text, maxW) {
+      const out = []; let line = '';
+      for (const w of text.split(' ')) {
+        const t = line ? line + ' ' + w : w;
+        if (ctx.measureText(t).width > maxW && line) { out.push(line); line = w; } else line = t;
       }
-      ctx.fillStyle = 'rgba(148,163,184,0.7)'; ctx.font = '20px Rajdhani, sans-serif';
-      ctx.fillText('// MIRE E APERTE O GATILHO PARA LER DE PERTO E OUVIR', 40, H - 22);
-      const t = new THREE.CanvasTexture(cvs); t.minFilter = THREE.LinearFilter; t.encoding = THREE.sRGBEncoding; t.anisotropy = MAX_ANISO; return t;
+      if (line) out.push(line);
+      return out;
+    }
+    function roundRect(g, x, y, w, h, r) {
+      g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+      g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
     }
 
     function polar(deg, y, r) { const a = deg * Math.PI / 180; return new THREE.Vector3(Math.sin(a) * r, y, -Math.cos(a) * r); }
-    // 4 temas na fileira alta; dados e iniciativa na fileira baixa (livres da linha de visão da caixa)
-    const CARD_HOME = [
-      polar(-60, 2.4, 2.8), polar(-21, 2.4, 2.8), polar(21, 2.4, 2.8), polar(60, 2.4, 2.8),
-      polar(-80, 1.1, 2.8), polar(-45, 1.1, 2.8), polar(45, 1.1, 2.8), polar(80, 1.1, 2.8)
-    ];
+    const TAB_W = 0.92, TAB_H = 0.54;
+    // 9 tópicos em arco atrás da Caixa, em duas alturas alternadas
+    const TAB_HOME = PANELS.map((p, i) => polar(-80 + i * 20, i % 2 === 0 ? 2.6 : 1.95, 2.9));
+
+    function drawTab(p) {
+      const g = p.ctx, d = p.data, W = 512, H = 300;
+      g.clearRect(0, 0, W, H);
+      const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, 'rgba(12,16,38,0.96)'); bg.addColorStop(1, 'rgba(5,7,20,0.96)');
+      g.fillStyle = bg; g.fillRect(0, 0, W, H);
+      g.strokeStyle = d.color; g.globalAlpha = p.visited ? 0.5 : 1; g.lineWidth = 6; g.strokeRect(5, 5, W - 10, H - 10); g.globalAlpha = 1;
+      g.fillStyle = d.color; g.fillRect(5, 5, W - 10, 10);
+      g.textAlign = 'left';
+      g.font = 'bold 84px Cinzel, serif'; g.fillText(String(d.num).padStart(2, '0'), 26, 112);
+      g.font = 'bold 24px Rajdhani, sans-serif'; g.fillText(d.tag, 170, 104);
+      g.fillStyle = '#ffffff';
+      let size = 42, lines = [];
+      for (; size >= 28; size -= 2) { g.font = `bold ${size}px Rajdhani, sans-serif`; lines = wrapLines(g, d.title, 460); if (lines.length <= 3) break; }
+      lines.forEach((l, k) => g.fillText(l, 26, 160 + k * size * 1.08));
+      g.font = '19px Rajdhani, sans-serif';
+      g.fillStyle = p.visited ? 'rgba(134,239,172,0.9)' : 'rgba(148,163,184,0.85)';
+      g.fillText(p.visited ? '✓ LIDO' : 'TOQUE PARA ABRIR', 26, 286);
+    }
 
     const infoFragmentsGroup = new THREE.Group(); scene.add(infoFragmentsGroup);
     const hologramPanels = [];
-    CARDS.forEach((data, index) => {
-      const geo = new THREE.PlaneGeometry(1.64, 1.127);
-      const mat = new THREE.MeshBasicMaterial({ map: createCardTexture(data), transparent: true, opacity: 0, side: THREE.DoubleSide, toneMapped: false });
-      const panel = new THREE.Mesh(geo, mat);
-      panel.position.set(0, CH_Y + 0.15, 0); panel.scale.set(0.01, 0.01, 0.01);
-      panel.userData = { isInfoCard: true, data, index, home: CARD_HOME[index].clone(), phase: index * 1.3, focused: false };
-      infoFragmentsGroup.add(panel); hologramPanels.push(panel); interactiveObjects.push(panel);
+    PANELS.forEach((data, index) => {
+      const cv = document.createElement('canvas'); cv.width = 512; cv.height = 300;
+      const p = { canvas: cv, ctx: cv.getContext('2d'), data, visited: false };
+      p.tex = new THREE.CanvasTexture(cv); p.tex.minFilter = THREE.LinearFilter; p.tex.encoding = THREE.sRGBEncoding; p.tex.anisotropy = MAX_ANISO;
+      drawTab(p);
+      const mat = new THREE.MeshBasicMaterial({ map: p.tex, transparent: true, opacity: 0, side: THREE.DoubleSide, toneMapped: false });
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(TAB_W, TAB_H), mat);
+      mesh.position.set(0, CH_Y + 0.15, 0); mesh.scale.setScalar(0.01); mesh.renderOrder = 20;
+      mesh.userData = { isTab: true, data, index, home: TAB_HOME[index].clone(), phase: index * 1.3, p };
+      infoFragmentsGroup.add(mesh); hologramPanels.push(mesh); interactiveObjects.push(mesh);
     });
+
+    /* ---- Painel de leitura (um por tópico, mesma moldura) ---- */
+    const RW = 1760, RH = 1100;
+    const readerCanvas = document.createElement('canvas'); readerCanvas.width = RW; readerCanvas.height = RH;
+    const rctx = readerCanvas.getContext('2d');
+    const readerTex = new THREE.CanvasTexture(readerCanvas); readerTex.minFilter = THREE.LinearFilter; readerTex.encoding = THREE.sRGBEncoding; readerTex.anisotropy = MAX_ANISO;
+    const readerMat = new THREE.MeshBasicMaterial({ map: readerTex, transparent: true, opacity: 0, side: THREE.DoubleSide, toneMapped: false, depthWrite: false });
+    const reader = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.375), readerMat);
+    reader.visible = false; reader.renderOrder = 50; reader.userData = { isReader: true };
+    scene.add(reader); interactiveObjects.push(reader);
+    let readerIdx = -1, readerState = 'closed', readerSpeaking = false;
+    const readerTarget = new THREE.Vector3();
+    const READER_BTNS = [
+      { id: 'prev', x: 50, y: 978, w: 330, h: 84 }, { id: 'listen', x: 400, y: 978, w: 560, h: 84 },
+      { id: 'next', x: 980, y: 978, w: 330, h: 84 }, { id: 'close', x: 1330, y: 978, w: 380, h: 84 }
+    ];
+
+    function layoutBlocks(g, blocks, s, y, draw, accent) {
+      const X = 60, MAXW = RW - 120, GAP = 24 * s;
+      blocks.forEach(b => {
+        let h = 0;
+        if (b.k === 'stat') {
+          const big = 104 * s, size = 38 * s, lh = size * 1.27, tx = X + 430;
+          g.font = `${size}px Rajdhani, sans-serif`;
+          const lines = wrapLines(g, b.t, RW - 60 - tx);
+          h = Math.max(big * 1.1, lines.length * lh + 6);
+          if (draw) {
+            g.fillStyle = accent; g.font = `bold ${big}px Cinzel, serif`; g.fillText(b.big, X, y + big * 0.92);
+            g.fillStyle = '#e2e8f0'; g.font = `${size}px Rajdhani, sans-serif`;
+            const ty = y + (h - lines.length * lh) / 2 + size * 0.92;
+            lines.forEach((l, k) => g.fillText(l, tx, ty + k * lh));
+            g.fillStyle = 'rgba(255,255,255,0.12)'; g.fillRect(X, y + h + GAP / 2 - 1, MAXW, 2);
+          }
+        } else if (b.k === 'risk') {
+          const lab = 28 * s, size = 36 * s, lh = size * 1.27, pad = 22 * s;
+          g.font = `${size}px Rajdhani, sans-serif`;
+          const lines = wrapLines(g, b.t, MAXW - 2 * pad);
+          h = pad + lab * 1.5 + lines.length * lh + pad * 0.6;
+          if (draw) {
+            g.fillStyle = 'rgba(248,113,113,0.10)'; roundRect(g, X, y, MAXW, h, 14); g.fill();
+            g.strokeStyle = 'rgba(248,113,113,0.55)'; g.lineWidth = 3; roundRect(g, X, y, MAXW, h, 14); g.stroke();
+            g.fillStyle = '#f87171'; g.font = `bold ${lab}px Rajdhani, sans-serif`; g.fillText('RISCO', X + pad, y + pad + lab * 0.9);
+            g.fillStyle = '#fecaca'; g.font = `${size}px Rajdhani, sans-serif`;
+            lines.forEach((l, k) => g.fillText(l, X + pad, y + pad + lab * 1.5 + size * 0.95 + k * lh));
+          }
+        } else {
+          const base = { p: 36, lead: 48, hl: 38, q: 42, ask: 70 }[b.k] || 36;
+          const size = base * s, lh = size * 1.27, ind = (b.k === 'q' || b.k === 'hl') ? 30 : 0;
+          g.font = `${(b.k === 'lead' || b.k === 'q' || b.k === 'ask') ? 'bold ' : ''}${size}px Rajdhani, sans-serif`;
+          const lines = wrapLines(g, b.t, MAXW - ind);
+          h = (lines.length - 1) * lh + size * 1.25;
+          if (draw) {
+            if (ind) { g.fillStyle = accent; g.fillRect(X, y, 8, h); }
+            g.fillStyle = b.k === 'hl' ? '#fde68a' : (b.k === 'ask' ? accent : (b.k === 'p' ? '#e2e8f0' : '#ffffff'));
+            lines.forEach((l, k) => g.fillText(l, X + ind, y + size * 0.95 + k * lh));
+          }
+        }
+        y += h + GAP;
+      });
+      return y - GAP;
+    }
+
+    function drawReader() {
+      const g = rctx, d = PANELS[Math.max(readerIdx, 0)];
+      g.clearRect(0, 0, RW, RH); g.textAlign = 'left';
+      const bg = g.createLinearGradient(0, 0, 0, RH); bg.addColorStop(0, 'rgba(10,14,34,0.97)'); bg.addColorStop(1, 'rgba(4,6,18,0.97)');
+      g.fillStyle = bg; g.fillRect(0, 0, RW, RH);
+      g.strokeStyle = d.color; g.lineWidth = 8; g.strokeRect(12, 12, RW - 24, RH - 24);
+      g.fillStyle = d.color; g.fillRect(12, 12, RW - 24, 18);
+      g.font = 'bold 34px Rajdhani, sans-serif';
+      g.fillText(`${String(d.num).padStart(2, '0')} / ${String(PANELS.length).padStart(2, '0')}   //   ${d.tag}`, 60, 92);
+      PANELS.forEach((_, i) => {
+        g.beginPath(); g.arc(RW - 60 - (PANELS.length - 1 - i) * 34, 82, i === readerIdx ? 10 : 6, 0, Math.PI * 2);
+        g.fillStyle = i === readerIdx ? d.color : 'rgba(255,255,255,0.28)'; g.fill();
+      });
+      let ts = 74; g.font = `bold ${ts}px Rajdhani, sans-serif`;
+      while (g.measureText(d.title).width > RW - 120 && ts > 44) { ts -= 2; g.font = `bold ${ts}px Rajdhani, sans-serif`; }
+      g.fillStyle = '#ffffff'; g.fillText(d.title, 60, 182);
+      if (d.subtitle) { g.font = 'italic 42px Rajdhani, sans-serif'; g.fillStyle = d.color; g.fillText(d.subtitle, 60, 238); }
+      const y0 = d.subtitle ? 282 : 232;
+      g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(60, y0 - 22, RW - 120, 2);
+      let s = 1.35;
+      for (; s > 0.72; s -= 0.03) { if (layoutBlocks(g, d.blocks, s, y0, false, d.color) <= 950) break; }
+      layoutBlocks(g, d.blocks, s, y0, true, d.color);
+      const labels = { prev: '◀  ANTERIOR', listen: readerSpeaking ? '■  PARAR LEITURA' : '▶  OUVIR', next: 'PRÓXIMO  ▶', close: '✕  FECHAR' };
+      const fills = { prev: 'rgba(30,41,90,0.92)', next: 'rgba(30,41,90,0.92)', listen: readerSpeaking ? 'rgba(37,99,235,0.94)' : 'rgba(217,119,6,0.94)', close: 'rgba(127,29,29,0.94)' };
+      g.font = 'bold 36px Rajdhani, sans-serif'; g.textAlign = 'center';
+      READER_BTNS.forEach(b => {
+        g.fillStyle = fills[b.id]; roundRect(g, b.x, b.y, b.w, b.h, 18); g.fill();
+        g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineWidth = 3; roundRect(g, b.x, b.y, b.w, b.h, 18); g.stroke();
+        g.fillStyle = '#ffffff'; g.fillText(labels[b.id], b.x + b.w / 2, b.y + b.h / 2 + 12);
+      });
+      g.textAlign = 'left';
+      readerTex.needsUpdate = true;
+    }
 
     const dataStreamBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.08, 3.8, 16, 1, true),
       new THREE.MeshBasicMaterial({ color: 0x9333ea, transparent: true, opacity: 0, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
@@ -1136,12 +1247,11 @@
     vrHoloButton.userData = { isActionButton: true };
     interactiveObjects.push(vrHoloButton); scene.add(vrHoloButton);
 
-    /* ---- Conexões: filamentos de energia caixa → cartões, e correntes entre cartões do mesmo grupo ---- */
+    /* ---- Conexões: filamentos de energia Caixa → cada tópico, e uma corrente ligando os tópicos na ordem de leitura ---- */
     const BOX_ANCHOR = new THREE.Vector3(0, CH_Y + 0.15, 0);
-    const GROUP_COLOR = { tema: 0xf5b13a, conceito: 0xc084fc, dados: 0x38bdf8, regulacao: 0x4ade80 };
     const linkMats = [], pulses = [];
     let linkLevel = 0;
-    const focusPos = new THREE.Vector3(), tmpHome = new THREE.Vector3();
+    const tmpHome = new THREE.Vector3();
 
     function addTube(curve, color) {
       const m = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
@@ -1149,9 +1259,9 @@
       linkMats.push(m);
     }
     hologramPanels.forEach(card => {
-      const ud = card.userData, col = GROUP_COLOR[ud.data.group];
-      const mid = BOX_ANCHOR.clone().lerp(ud.home, 0.5); mid.y += 0.55;
-      const curve = new THREE.QuadraticBezierCurve3(BOX_ANCHOR.clone(), mid, ud.home.clone().add(new THREE.Vector3(0, -0.57, 0)));
+      const ud = card.userData, col = new THREE.Color(ud.data.color);
+      const mid = BOX_ANCHOR.clone().lerp(ud.home, 0.5); mid.y += 0.5;
+      const curve = new THREE.QuadraticBezierCurve3(BOX_ANCHOR.clone(), mid, ud.home.clone().add(new THREE.Vector3(0, -TAB_H / 2 - 0.02, 0)));
       addTube(curve, col);
       for (let k = 0; k < 2; k++) {
         const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: dustTex, color: col, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
@@ -1159,15 +1269,12 @@
         pulses.push({ sprite: sp, curve, t: k * 0.5 + Math.random() * 0.2, speed: 0.22 + Math.random() * 0.15 });
       }
     });
-    function chain(indices, color) {
-      for (let i = 0; i < indices.length - 1; i++) {
-        const a = hologramPanels[indices[i]].userData.home, b = hologramPanels[indices[i + 1]].userData.home;
-        const dir = new THREE.Vector3(b.x - a.x, 0, b.z - a.z).normalize();
-        addTube(new THREE.LineCurve3(a.clone().addScaledVector(dir, 0.86), b.clone().addScaledVector(dir, -0.86)), color);
-      }
+    for (let i = 0; i < hologramPanels.length - 1; i++) {
+      const A = hologramPanels[i].userData, B = hologramPanels[i + 1].userData;
+      const dir = B.home.clone().sub(A.home).normalize();
+      addTube(new THREE.LineCurve3(A.home.clone().addScaledVector(dir, 0.45), B.home.clone().addScaledVector(dir, -0.45)),
+              new THREE.Color(A.data.color).lerp(new THREE.Color(B.data.color), 0.5));
     }
-    chain([0, 1, 2, 3], GROUP_COLOR.tema);
-    chain([4, 5], GROUP_COLOR.conceito);
     function setLinkLevel(v) { linkLevel = v; linkMats.forEach(m => { m.opacity = v * 0.55; }); }
 
     let isBoxOpen = false, isOpening = false, narrating = false;
@@ -1424,16 +1531,18 @@
       nudge() {
         if (this.running && this.blocked) { this.blocked = false; const tk = ++this.token; if (this.canSpeak && sound.enabled) this.speakAll(tk, this.cur); else this.speakUnit(this.cur, tk, true); }
       }
-      speakCard(text) {
-        if (!this.canSpeak || !sound.enabled || this.running) return;
+      speakCard(text, onDone) {
+        if (!this.canSpeak || !sound.enabled || this.running) return false;
         const tk = ++this.cardToken;
         try { speechSynthesis.cancel(); } catch (e) {}
         const parts = text.match(/[^.!?]+[.!?]*/g) || [text];
         setTimeout(() => {
           if (tk !== this.cardToken) return;
           this.cq = parts.map(p => { const u = new SpeechSynthesisUtterance(p.trim()); u.lang = 'pt-BR'; if (this.voice) u.voice = this.voice; u.rate = NARR_RATE; return u; });
+          this.cq[this.cq.length - 1].onend = () => { if (tk === this.cardToken && onDone) onDone(); };
           this.cq.forEach(u => speechSynthesis.speak(u));
         }, 80);
+        return true;
       }
       stopCard() {
         this.cardToken++;
@@ -1458,16 +1567,17 @@
       refreshUI();
       narrator.start({
         onUnit: (i, u) => { showSubtitle(u.show, i); if (u.opens && !isBoxOpen && !isOpening) openBox(); },
-        onEnd: () => endNarration()
+        onEnd: () => endNarration(true)
       });
     }
-    function endNarration() {
+    function endNarration(hint) {
       if (!narrating) return;
       narrating = false; sound.setLevel(0.5);
-      setTimeout(hideSubtitle, 1500);
+      if (hint) { showSubtitle('Toque em um dos 9 tópicos ao redor da Caixa para ler e ouvir.', NARRATION.length - 1); setTimeout(hideSubtitle, 7000); }
+      else setTimeout(hideSubtitle, 1500);
       if (!isBoxOpen && !isOpening) openBox(); else refreshUI();
     }
-    function skipIntro() { narrator.stop(); hideSubtitle(); endNarration(); }
+    function skipIntro(noHint) { narrator.stop(); hideSubtitle(); endNarration(!noHint); }
     function endSessionCleanup() {
       if (narrating) { narrator.stop(); narrating = false; sound.setLevel(0.5); hideSubtitle(); }
       narrator.stopCard();
@@ -1545,32 +1655,71 @@
       requestAnimationFrame(animateClose);
     }
 
-    /* ---- Interação com cartões: toque para ler de perto (e ouvir); toque de novo ou Esc para devolver ---- */
-    function unfocusAll() { hologramPanels.forEach(c => { c.userData.focused = false; }); narrator.stopCard(); }
-    function toggleFocus(card) {
-      const was = card.userData.focused;
-      hologramPanels.forEach(c => { c.userData.focused = false; });
-      if (!was) {
-        card.userData.focused = true;
-        if (!narrating) narrator.speakCard(card.userData.data.say);
-      } else narrator.stopCard();
-      bumpIdle();
+    /* ---- Tópicos e painel de leitura ---- */
+    function unfocusAll() { closeReader(); }
+    function startReaderSpeech() {
+      readerSpeaking = narrator.speakCard(PANELS[readerIdx].say, () => { readerSpeaking = false; drawReader(); });
+    }
+    function openReader(idx) {
+      const tab = hologramPanels[idx], wasShown = readerState === 'open';
+      readerIdx = idx;
+      tab.userData.p.visited = true; drawTab(tab.userData.p); tab.userData.p.tex.needsUpdate = true;
+      narrator.stopCard(); readerSpeaking = false;
+      if (!wasShown) {
+        camera.getWorldDirection(tmpDir); tmpDir.y = 0;
+        if (tmpDir.lengthSq() < 1e-4) tmpDir.set(0, 0, -1);
+        tmpDir.normalize();
+        readerTarget.copy(camWorld).addScaledVector(tmpDir, 1.5); readerTarget.y = camWorld.y - 0.05;
+        reader.position.copy(tab.position); reader.scale.setScalar(0.15); readerMat.opacity = 0; reader.visible = true;
+      }
+      readerState = 'open';
+      startReaderSpeech();
+      drawReader(); bumpIdle();
+    }
+    function closeReader() {
+      if (readerState !== 'open') return;
+      readerState = 'closing'; narrator.stopCard(); readerSpeaking = false;
+    }
+    function stepReader(dir) { openReader((readerIdx + dir + PANELS.length) % PANELS.length); }
+    function toggleListen() {
+      if (readerSpeaking) { narrator.stopCard(); readerSpeaking = false; } else startReaderSpeech();
+      drawReader(); bumpIdle();
+    }
+    function readerClick(uv) {
+      const x = uv.x * RW, y = (1 - uv.y) * RH;
+      const b = READER_BTNS.find(b => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h);
+      if (!b) { bumpIdle(); return; }
+      if (b.id === 'prev') stepReader(-1);
+      else if (b.id === 'next') stepReader(1);
+      else if (b.id === 'listen') toggleListen();
+      else closeReader();
     }
     function handleInteraction(obj) {
       if (obj.userData.isActionButton) { onPrimaryAction(); return; }
-      if (obj.userData.isChest) { if (!narrating) onPrimaryAction(); return; }
-      if (obj.userData.isInfoCard && isBoxOpen && !isOpening) toggleFocus(obj);
+      if (obj.userData.isChest) { if (!narrating && !isBoxOpen && !isOpening) startExperience(); return; }
+      if (obj.userData.isTab && isBoxOpen && !isOpening) {
+        if (narrating) skipIntro(true);
+        openReader(obj.userData.index);
+      }
     }
     function handlePick(hits) {
       narrator.nudge();
-      if (hits.length > 0) { sound.playClickSound(); handleInteraction(hits[0].object); }
-      else if (isBoxOpen) unfocusAll();
+      hits = hits.filter(h => h.object !== reader || readerState === 'open');
+      if (hits.length > 0) {
+        const h = hits[0]; sound.playClickSound();
+        if (h.object === reader) readerClick(h.uv); else handleInteraction(h.object);
+      } else if (readerState === 'open') closeReader();
     }
-    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') unfocusAll(); });
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeReader();
+      else if (readerState === 'open' && e.key === 'ArrowRight') stepReader(1);
+      else if (readerState === 'open' && e.key === 'ArrowLeft') stepReader(-1);
+    });
 
     function redrawAllText() {
       updateHologramCanvas(); updateHoloButtonCanvas();
-      hologramPanels.forEach(p => { p.material.map.dispose(); p.material.map = createCardTexture(p.userData.data); p.material.needsUpdate = true; });
+      hologramPanels.forEach(m => { drawTab(m.userData.p); m.userData.p.tex.needsUpdate = true; });
+      drawReader();
       if (subText) drawSubtitle(subText, subIdx);
     }
 
@@ -1691,24 +1840,26 @@
         hopeGeo.attributes.position.needsUpdate = true;
       }
 
-      // Cartões: flutuação, foco (leitura de perto) e pulsos de energia nas conexões
+      // Tópicos: flutuação suave; painel de leitura abre/fecha; pulsos de energia nas conexões
       if (isBoxOpen && !isOpening) {
-        camera.getWorldDirection(tmpDir);
-        focusPos.copy(camWorld).addScaledVector(tmpDir, 1.55); focusPos.y -= 0.04;
         const kk = 1 - Math.exp(-6 * delta);
         hologramPanels.forEach((card) => {
           const ud = card.userData;
-          if (ud.focused) {
-            card.position.lerp(focusPos, kk);
-            card.scale.setScalar(card.scale.x + (0.9 - card.scale.x) * kk);
-          } else {
-            tmpHome.copy(ud.home); tmpHome.y += Math.sin(elapsed * 1.3 + ud.phase) * 0.04;
-            card.position.lerp(tmpHome, kk);
-            card.scale.setScalar(card.scale.x + (1 - card.scale.x) * kk);
-          }
+          tmpHome.copy(ud.home); tmpHome.y += Math.sin(elapsed * 1.3 + ud.phase) * 0.04;
+          card.position.lerp(tmpHome, kk);
+          const sc = (readerState === 'open' && readerIdx === ud.index) ? 1.12 : 1;
+          card.scale.setScalar(card.scale.x + (sc - card.scale.x) * kk);
           card.lookAt(camWorld);
         });
         dataStreamBeam.rotation.y += delta * 1.5;
+      }
+      if (readerState !== 'closed') {
+        const kr = 1 - Math.exp(-7 * delta), open = readerState === 'open';
+        reader.position.lerp(open ? readerTarget : hologramPanels[Math.max(readerIdx, 0)].position, kr);
+        reader.scale.setScalar(reader.scale.x + ((open ? 1 : 0.15) - reader.scale.x) * kr);
+        readerMat.opacity += ((open ? 1 : 0) - readerMat.opacity) * kr;
+        reader.lookAt(camWorld);
+        if (!open && readerMat.opacity < 0.03) { reader.visible = false; readerState = 'closed'; }
       }
       if (linkLevel > 0.01) {
         pulses.forEach(p => {
