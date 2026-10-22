@@ -480,7 +480,25 @@
           button.textContent = 'VERIFICANDO VR...';
           navigator.xr.isSessionSupported('immersive-vr').then(s => { if (s) showEnterVR(); else { disableButton(); button.textContent = 'VR NÃO SUPORTADO'; } })
             .catch(() => { disableButton(); button.textContent = 'VR NÃO SUPORTADO'; });
-        } else { button.textContent = 'WEBXR NÃO DISPONÍVEL'; disableButton(); }
+        } else {
+          // Sem navigator.xr: explica o motivo na tela (o modo 2D continua funcionando)
+          disableButton();
+          const ua = navigator.userAgent || '';
+          const browser = (ua.match(/OculusBrowser\/[\d.]+/) || ua.match(/(?:Version|Chrome|Firefox)\/[\d.]+/) || ['navegador desconhecido'])[0];
+          const insecure = !window.isSecureContext, framed = window.self !== window.top;
+          let msg;
+          if (insecure) msg = 'O modo VR só funciona em endereço https://. Esta página abriu em ' + location.protocol + '//' + (location.host || 'arquivo local') + '. Abra o link https:// completo.';
+          else if (framed) msg = 'A página está dentro de outro quadro, que bloqueia o VR. Abra o link diretamente no navegador do óculos.';
+          else msg = 'Este navegador não oferece WebXR (' + browser + '). No Meta Quest, abra o link no Meta Quest Browser. Em outros óculos, use o navegador do próprio aparelho e ative o recurso WebXR, se houver.';
+          button.textContent = 'VR INDISPONÍVEL // TOQUE';
+          button.style.opacity = '0.85';
+          const hint = document.createElement('div');
+          hint.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:300;max-width:min(92vw,660px);background:rgba(110,20,30,.94);color:#fff;border:1px solid #fca5a5;border-radius:12px;padding:10px 16px;font:600 15px Rajdhani,sans-serif;line-height:1.35;text-align:center;cursor:pointer;';
+          hint.textContent = msg + ' A experiência continua disponível em 2D com o botão "Iniciar Experiência". (toque para fechar)';
+          hint.onclick = () => { hint.style.display = 'none'; };
+          document.body.appendChild(hint);
+          button.onclick = () => { hint.style.display = 'block'; };
+        }
         return button;
       }
     };
